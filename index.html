@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Last Letter Word Game - Endless Mode 🎮</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+      min-height: 100vh;
+    }
+    h1 { text-align: center; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+    p { text-align: center; color: white; font-size: 1.1em; }
+    #controls { text-align: center; margin: 20px 0; }
+    select, button { padding: 12px 20px; font-size: 16px; border: none; border-radius: 25px; margin: 0 10px; cursor: pointer; }
+    select { background: white; }
+    button { background: #4CAF50; color: white; font-weight: bold; transition: transform 0.2s; }
+    button:hover { transform: scale(1.05); }
+    button:disabled { background: #ccc; transform: none; }
+    #status { text-align: center; color: #90EE90; font-weight: bold; margin: 10px 0; }
+    #hud {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      background: rgba(255,255,255,0.2);
+      padding: 15px;
+      border-radius: 15px;
+      margin: 20px 0;
+      font-size: 20px;
+      font-weight: bold;
+      backdrop-filter: blur(10px);
+    }
+    #hearts { font-size: 28px; }
+    #streak { color: #FFD700; text-shadow: 0 0 5px gold; }
+    #tries { color: #2196F3; }
+    #timer { color: #FFD700; }
+    .timer-critical { color: #f44336 !important; animation: pulse 0.8s infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .low-tries { color: #f44336 !important; }
+    #chain {
+      background: rgba(255,255,255,0.95);
+      border-radius: 15px;
+      padding: 20px;
+      height: 150px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 18px;
+      line-height: 1.6;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      margin: 20px 0;
+      text-align: center;
+    }
+    #prompt { text-align: center; font-size: 24px; color: white; font-weight: bold; margin: 20px 0; }
+    #input-container { text-align: center; margin: 30px 0; }
+    #input {
+      width: 60%;
+      max-width: 400px;
+      padding: 15px;
+      font-size: 20px;
+      border: 2px solid #ddd;
+      border-radius: 30px;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    #input:focus { border-color: #4CAF50; }
+    #input:disabled { background: #eee; cursor: not-allowed; }
+    #submit { background: #2196F3; margin-left: 10px; }
+    #msg { text-align: center; font-size: 18px; min-height: 30px; margin-top: 10px; }
+    .error {
+      color: #f44336;
+      animation: shake 0.5s ease-in-out;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
+    }
+    .win { color: #FFD700; font-size: 28px; text-shadow: 0 0 10px gold; }
+    .player { color: #2196F3; font-weight: bold; }
+    .ai { color: #FF9800; font-weight: bold; }
+    @media (max-width: 600px) {
+      #hud { flex-direction: column; gap: 10px; }
+      #input { width: 80%; margin-bottom: 10px; }
+      #submit { display: block; margin: 10px auto; width: 80%; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 Last Letter - Endless Survival</h1>
+  <p>Chain words by last letter. No repeats ever. AI plays <strong>perfectly</strong> to prolong. Survive as long as possible!<br>
+  <strong>3 Hearts 💖 | 3 Tries/Turn | 10s Timer</strong></p>
+
+  <div id="controls">
+    <label>Category: 
+      <select id="cat">
+        <option value="general">All Words (~370k)</option>
+        <option value="food">Food (~1k)</option>
+        <option value="countries">Countries (~200)</option>
+      </select>
+    </label>
+    <button onclick="newGame()">🆕 New Game</button>
+  </div>
+
+  <div id="status">Loading dictionary...</div>
+  <div id="hud">
+    <div id="heartsEl">💖💖💖</div>
+    <div id="streakEl">Streak: <strong>0</strong></div>
+    <div id="triesEl">Tries: <strong>3</strong></div>
+    <div id="timerEl">10s</div>
+  </div>
+  <div id="chain">Get ready!</div>
+  <div id="prompt"></div>
+  <div id="input-container">
+    <input id="input" autocomplete="off" placeholder="Type your word...">
+    <button id="submit" onclick="submitWord()">Submit</button>
+  </div>
+  <div id="msgEl"></div>
+
+  <script>
+    // Game state
+    let words = [];
+    let wordMap = new Map();
+    let used = new Set();
+    let usedCount = new Map();
+    let chain = [];
+    let currentLetter = '';
+    let isPlayerTurn = true;
+    let currentCategory = 'general';
+    let lives = 3;
+    let triesLeft = 3;
+    let maxStreak = 0;
+    let timerId = null;
+    let timeLeft = 10;
+    let gameActive = true;
+
+    const URLS = {
+      general: 'https://raw.githubusercontent.com/dwyl/english-words/master/words_alpha.txt',
+      food: 'https://gist.githubusercontent.com/peterdemin/920ec3eaaa0a9f3cafd3a855557f5e0c/raw/food.txt',
+      countries: 'https://gist.githubusercontent.com/kalinchernev/486393efcca01623b18d/raw/countries.txt'
+    };
+
+    // Load words
+    async function loadWords(cat) {
+      const url = URLS[cat];
+      try {
+        const res = await fetch(url);
+        const text = await res.text();
+        words = text.split(/\r?\n/)
+          .map(w => w.trim().toLowerCase())
+          .filter(w => /^[a-z]{3,20}$/.test(w))
+          .filter((w, i, arr) => arr.indexOf(w) === i);
+        buildMap();
+        document.getElementById('status').textContent = `✅ Loaded ${words.length.toLocaleString()} words!`;
+      } catch (e) {
+        console.error(e);
+        words = ['apple', 'elephant', 'tiger', 'rabbit', 'ant', 'toad', 'dog', 'goat', 'numbat', 'turtle', 'upside', 'eleven', 'noodle'];
+        buildMap();
+        document.getElementById('status').textContent = '⚠️ Fallback tiny dict';
+      }
+    }
+
+    function buildMap() {
+      wordMap.clear();
+      for (let l of 'abcdefghijklmnopqrstuvwxyz') {
+        wordMap.set(l, new Set());
+      }
+      for (let w of words) {
+        const first = w[0];
+        wordMap.get(first)?.add(w);
+      }
+    }
+
+    function remainingFor(l) {
+      return (wordMap.get(l)?.size ?? 0) - (usedCount.get(l) ?? 0);
+    }
+
+    function newGame() {
+      currentCategory = document.getElementById('cat').value;
+      const key = `lastLetterMaxStreak_${currentCategory}`;
+      maxStreak = parseInt(localStorage.getItem(key) || '0');
+      loadWords(currentCategory).then(() => {
+        used.clear();
+        usedCount.clear();
+        chain = [];
+        currentLetter = '';
+        lives = 3;
+        isPlayerTurn = true;
+        gameActive = true;
+        document.getElementById('input').disabled = false;
+        document.getElementById('submit').disabled = false;
+        updateUI();
+        updateStreak();
+      });
+    }
+
+    function updateUI() {
+      const chainEl = document.getElementById('chain');
+      chainEl.innerHTML = chain.map((w, i) => 
+        `<span class="${i % 2 === 0 ? 'player' : 'ai'}">${w.toUpperCase()}</span>`
+      ).join(' → ') || 'Start the chain!';
+
+      const promptEl = document.getElementById('prompt');
+      const inputEl = document.getElementById('input');
+      if (chain.length === 0) {
+        promptEl.innerHTML = '<em>🚀 Enter <strong>any</strong> word to start!</em>';
+        inputEl.placeholder = 'Any word (3+ letters)';
+      } else {
+        promptEl.innerHTML = `Next: Word starting with <strong style="color:#FFD700;">${currentLetter.toUpperCase()}</strong>`;
+        inputEl.placeholder = `Starts with ${currentLetter.toUpperCase()}...`;
+      }
+
+      inputEl.value = '';
+      if (gameActive) inputEl.focus();
+      document.getElementById('msgEl').innerHTML = '';
+
+      clearInterval(timerId);
+      if (isPlayerTurn && gameActive) {
+        startPlayerTurn();
+      }
+    }
+
+    function startPlayerTurn() {
+      triesLeft = 3;
+      updateTries();
+      startTimer();
+    }
+
+    function startTimer() {
+      timeLeft = 10;
+      updateTimer();
+      timerId = setInterval(() => {
+        timeLeft--;
+        updateTimer();
+        if (timeLeft <= 0) {
+          clearInterval(timerId);
+          playerFail();
+        }
+      }, 1000);
+    }
+
+    function updateTimer() {
+      const el = document.getElementById('timerEl');
+      el.textContent = `${timeLeft}s`;
+      el.className = timeLeft <= 3 ? 'timer-critical' : '';
+    }
+
+    function updateTries() {
+      const el = document.getElementById('triesEl');
+      el.innerHTML = `Tries: <strong>${triesLeft}</strong>`;
+      el.className = triesLeft <= 1 ? 'low-tries' : '';
+    }
+
+    function updateHearts() {
+      const el = document.getElementById('heartsEl');
+      el.innerHTML = '💖'.repeat(lives) + '💔'.repeat(3 - lives);
+    }
+
+    function updateStreak() {
+      document.getElementById('streakEl').innerHTML = `Streak: <strong>${chain.length}</strong>`;
+    }
+
+    function afterAddWord() {
+      if (chain.length > maxStreak) {
+        maxStreak = chain.length;
+        const key = `lastLetterMaxStreak_${currentCategory}`;
+        localStorage.setItem(key, maxStreak);
+        document.getElementById('msgEl').innerHTML = '<span class="win">🎉 New Best Streak!</span>';
+        setTimeout(() => { document.getElementById('msgEl').innerHTML = ''; }, 2000);
+      }
+      updateStreak();
+    }
+
+    function submitWord() {
+      if (!gameActive || !isPlayerTurn) return;
+      const inputEl = document.getElementById('input');
+      let word = inputEl.value.trim().toLowerCase();
+      if (!word || !/^[a-z]{3,20}$/.test(word)) {
+        shakeError('❌ 3+ letters, A-Z only!');
+        return;
+      }
+
+      const firstLetter = word[0];
+      if (!wordMap.get(firstLetter)?.has(word)) {
+        shakeError('❌ Not in dictionary!');
+        return;
+      }
+
+      if (chain.length > 0 && firstLetter !== currentLetter) {
+        shakeError(`❌ Must start with ${currentLetter.toUpperCase()}!`);
+        return;
+      }
+
+      if (used.has(word)) {
+        shakeError('❌ Already used!');
+        return;
+      }
+
+      // Success!
+      clearInterval(timerId);
+      used.add(word);
+      usedCount.set(word[0], (usedCount.get(word[0]) ?? 0) + 1);
+      chain.push(word);
+      currentLetter = word.slice(-1);
+      afterAddWord();
+      isPlayerTurn = false;
+      updateUI();
+      setTimeout(aiTurn, 800 + Math.random() * 400);
+    }
+
+    function shakeError(msg) {
+      triesLeft--;
+      updateTries();
+      const msgEl = document.getElementById('msgEl');
+      msgEl.innerHTML = `<span class="error">${msg}</span>`;
+      document.getElementById('input').select();
+      if (triesLeft <= 0) {
+        playerFail();
+      }
+    }
+
+    function playerFail() {
+      lives--;
+      updateHearts();
+      clearInterval(timerId);
+      if (lives <= 0) {
+        gameOver();
+        return;
+      }
+      document.getElementById('msgEl').innerHTML = `<span class="error">💀 Lost a life! (${lives}/3) AI responds...</span>`;
+      setTimeout(aiTurn, 1200);
+    }
+
+    function aiTurn() {
+      const candidates = Array.from(wordMap.get(currentLetter) || []).filter(w => !used.has(w));
+      
+      if (candidates.length === 0) {
+        // Stuck - jump to best letter for endless play
+        let bestL = 'a';
+        let maxR = -1;
+        for (let l of 'abcdefghijklmnopqrstuvwxyz') {
+          let r = remainingFor(l);
+          if (r > maxR) {
+            maxR = r;
+            bestL = l;
+          }
+        }
+        if (maxR > 0) {
+          document.getElementById('msgEl').innerHTML = '<span style="color:#90EE90">🔄 AI adapts - continuing chain!</span>';
+          currentLetter = bestL;
+          isPlayerTurn = true;
+          setTimeout(updateUI, 1500);
+          return;
+        } else {
+          // Impossible: dict exhausted
+          gameOver(true);
+          return;
+        }
+      }
+
+      // AI picks greedy: max remaining for NEXT letter, tiebreak longest
+      let bestWord = null;
+      let bestNextRem = -1;
+      for (let w of candidates) {
+        let nextL = w.slice(-1);
+        let nextRem = remainingFor(nextL);
+        let score = nextRem * 100 + w.length; // prioritize nextRem, then length
+        if (score > bestNextRem) {
+          bestNextRem = score;
+          bestWord = w;
+        }
+      }
+
+      const aiWord = bestWord;
+      used.add(aiWord);
+      usedCount.set(aiWord[0], (usedCount.get(aiWord[0]) ?? 0) + 1);
+      chain.push(aiWord);
+      currentLetter = aiWord.slice(-1);
+      afterAddWord();
+      isPlayerTurn = true;
+      updateUI();
+    }
+
+    function gameOver(win = false) {
+      gameActive = false;
+      clearInterval(timerId);
+      document.getElementById('input').disabled = true;
+      document.getElementById('submit').disabled = true;
+      const msg = win ? 
+        '<span class="win">🏆 PERFECT! Dictionary Exhausted!</span>' :
+        '<span class="error">💀 GAME OVER</span>';
+      document.getElementById('msgEl').innerHTML = `
+        ${msg}<br>
+        Final Streak: <strong>${chain.length}</strong><br>
+        Best: <strong>${maxStreak}</strong><br><br>
+        <button onclick="newGame()" style="background:#4CAF50; padding:15px 30px; font-size:18px;">🆕 New Game</button>
+      `;
+    }
+
+    // Events
+    document.getElementById('input').addEventListener('keypress', e => {
+      if (e.key === 'Enter') submitWord();
+    });
+
+    document.getElementById('cat').addEventListener('change', () => {
+      document.getElementById('status').textContent = 'Switch in New Game';
+    });
+
+    // Start
+    newGame();
+    updateHearts();
+  </script>
+</body>
+</html>
