@@ -3,134 +3,213 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Last Letter - Dark Mode</title>
+  <title>LAST LETTER • Endless</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Roboto+Mono:wght@400;700&display=swap');
+
+    * { margin:0; padding:0; box-sizing:border-box; }
     body {
-      margin: 0;
       height: 100vh;
-      background: #000;
-      color: #0f0;
-      font-family: 'Courier New', monospace;
+      background: radial-gradient(circle at 50% 80%, #0a0020 0%, #000 70%);
+      color: #fff;
+      font-family: 'Roboto Mono', monospace;
+      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
-      overflow: hidden;
       user-select: none;
     }
-    #startScreen, #game {
+
+    /* Start Screen */
+    #startScreen {
       text-align: center;
+      animation: fadeIn 1.5s;
+    }
+    #title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 80px;
+      background: linear-gradient(90deg, #0f0, #0ff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 0 40px rgba(0,255,0,0.5);
+      margin-bottom: 30px;
     }
     #startBtn {
-      padding: 20px 60px;
-      font-size: 40px;
-      background: #0f0;
+      padding: 20px 80px;
+      font-size: 36px;
+      font-weight: bold;
+      background: linear-gradient(45deg, #00ff9d, #00bfff);
       color: #000;
       border: none;
-      border-radius: 15px;
+      border-radius: 50px;
       cursor: pointer;
-      box-shadow: 0 0 30px #0f0;
-      transition: 0.3s;
+      box-shadow: 0 10px 30px rgba(0,255,255,0.4);
+      transition: all 0.3s;
     }
-    #startBtn:hover { transform: scale(1.1); box-shadow: 0 0 50px #0f0; }
+    #startBtn:hover { transform: translateY(-10px); box-shadow: 0 20px 50px rgba(0,255,255,0.6); }
 
+    /* Game UI */
     #game {
       display: none;
       width: 100%;
+      max-width: 500px;
+      padding: 20px;
     }
-    #streak {
-      font-size: 36px;
-      color: #ff0;
-      text-shadow: 0 0 15px gold;
-      margin-bottom: 20px;
-    }
-    #main {
-      font-size: 160px;
+    #topBar {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 40px;
+      font-size: 24px;
       font-weight: bold;
-      line-height: 1.2;
-      text-shadow: 0 0 40px #0f0;
-      letter-spacing: 8px;
+    }
+    .hearts { color: #ff3366; text-shadow: 0 0 10px #ff3366; }
+    .streak { color: #ffeb3b; text-shadow: 0 0 15px gold; }
+
+    /* Main Letter + Typing Area */
+    #center {
+      text-align: center;
+      margin: 60px 0;
     }
     #requiredLetter {
+      font-size: 200px;
+      font-weight: bold;
+      color: #0ff;
+      text-shadow: 0 0 60px #0ff, 0 0 120px #0ff;
       display: inline-block;
-      min-width: 160px;
+      min-width: 200px;
+      animation: glow 3s infinite alternate;
     }
     #typedWord {
+      font-size: 140px;
+      color: #0f0;
+      text-shadow: 0 0 40px #0f0;
       display: inline-block;
-      color: #0ff;
-      text-shadow: 0 0 30px cyan;
+      margin-left: 20px;
+      min-height: 160px;
+      line-height: 1;
     }
+
+    /* Timer */
     #timer {
-      font-size: 50px;
-      color: #f33;
-      margin: 30px 0;
+      font-size: 60px;
+      font-weight: bold;
+      color: #ff3366;
+      text-shadow: 0 0 20px #ff3366;
     }
-    #hud {
-      position: absolute;
-      top: 30px;
-      left: 30px;
-      font-size: 32px;
-      color: #fff;
-    }
+    .timer-low { animation: pulse 0.6s infinite; }
+    @keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.1); } }
+    @keyframes glow { from { text-shadow: 0 0 60px #0ff; } to { text-shadow: 0 0 100px #0ff, 0 0 150px #0ff; } }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+    /* Messages */
     #msg {
-      position: absolute;
-      bottom: 60px;
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
       font-size: 36px;
-      color: #f33;
+      font-weight: bold;
+      padding: 15px 40px;
+      background: rgba(255,0,102,0.2);
+      border: 2px solid #ff3366;
+      border-radius: 50px;
       opacity: 0;
-      transition: opacity 0.5s;
+      transition: all 0.4s;
     }
-    .pulse { animation: pulse 0.8s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    #msg.show { opacity: 1; bottom: 120px; }
+
+    /* Game Over */
+    #gameOver {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 50px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.6s;
+    }
+    #gameOver.show { opacity: 1; pointer-events: all; }
+    #finalStreak { color: #ffeb3b; margin: 20px 0; font-size: 80px; }
+    #restartBtn {
+      margin-top: 40px;
+      padding: 20px 60px;
+      font-size: 32px;
+      background: #0f0;
+      color: #000;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
 
+  <!-- Start Screen -->
   <div id="startScreen">
-    <h1 style="font-size:70px; margin:0; color:#0f0; text-shadow:0 0 30px #0f0;">LAST LETTER</h1>
-    <button id="startBtn" onclick="startGame()">START</button>
+    <h1 id="title">LAST LETTER</h1>
+    <button id="startBtn" onclick="startGame()">PLAY</button>
   </div>
 
+  <!-- Game -->
   <div id="game">
-    <div id="hud">Hearts Hearts Hearts</div>
-    <div id="streak">STREAK: <strong>0</strong></div>
-    <div id="main">
-      <span id="requiredLetter">?</span><span id="typedWord"></span>
+    <div id="topBar">
+      <div class="hearts" id="hearts">Hearts Hearts Hearts</div>
+      <div class="streak">STREAK <span id="streakNum">0</span></div>
     </div>
-    <div id="timer">10</div>
+
+    <div id="center">
+      <div>
+        <span id="requiredLetter">ANY</span>
+        <span id="typedWord"></span>
+      </div>
+    </div>
+
+    <div style="text-align:center">
+      <div id="timer">10</div>
+    </div>
+
     <div id="msg"></div>
   </div>
 
+  <!-- Game Over Screen -->
+  <div id="gameOver">
+    <div>GAME OVER</div>
+    <div id="finalStreak">0</div>
+    <div style="font-size:28px; color:#aaa;">Best: <span id="bestScore">0</span></div>
+    <button id="restartBtn" onclick="location.reload()">PLAY AGAIN</button>
+  </div>
+
   <script>
-    const startScreen = document.getElementById('startScreen');
-    const game = document.getElementById('game');
     const requiredEl = document.getElementById('requiredLetter');
     const typedEl = document.getElementById('typedWord');
     const timerEl = document.getElementById('timer');
-    const streakEl = document.getElementById('streak').querySelector('strong');
-    const heartsEl = document.getElementById('hud');
+    const streakEl = document.getElementById('streakNum');
+    const heartsEl = document.getElementById('hearts');
     const msgEl = document.getElementById('msg');
+    const gameOverEl = document.getElementById('gameOver');
+    const finalStreakEl = document.getElementById('finalStreak');
+    const bestScoreEl = document.getElementById('bestScore');
 
-    let words = [], wordMap = new Map(), used = new Set();
-    let chain = [], currentLetter = '', typed = '';
+    let words = [], used = new Set(), chain = [];
+    let currentLetter = '', typed = '';
     let lives = 3, tries = 3, streak = 0, best = 0;
     let timer = 10, timerId = null, gameActive = false;
 
     // Load dictionary
     fetch('https://raw.githubusercontent.com/dwyl/english-words/master/words_alpha.txt')
       .then(r => r.text())
-      .then(t => {
-        words = t.split('\n').map(w => w.trim().toLowerCase()).filter(w => w.length >= 3);
-        for (let w of words) {
-          let first = w[0];
-          if (!wordMap.has(first)) wordMap.set(first, new Set());
-          wordMap.get(first).add(w);
-        }
-      });
+      .then(t => words = t.split('\n').map(w=>w.trim().toLowerCase()).filter(w=>w.length>=3));
 
     function startGame() {
-      startScreen.style.display = 'none';
-      game.style.display = 'block';
+      document.getElementById('startScreen').style.display = 'none';
+      document.getElementById('game').style.display = 'block';
       best = parseInt(localStorage.getItem('lastLetterBest') || '0');
+      bestScoreEl.textContent = best;
       resetGame();
       nextTurn();
     }
@@ -141,8 +220,7 @@
     }
 
     function nextTurn() {
-      typed = '';
-      typedEl.textContent = '';
+      typed = ''; typedEl.textContent = '';
       tries = 3;
 
       if (chain.length === 0) {
@@ -155,15 +233,14 @@
 
       timer = 10;
       timerEl.textContent = timer;
-      timerEl.classList.remove('pulse');
+      timerEl.classList.remove('timer-low');
       clearInterval(timerId);
       timerId = setInterval(() => {
         timer--;
         timerEl.textContent = timer;
-        if (timer <= 3) timerEl.classList.add('pulse');
+        if (timer <= 3) timerEl.classList.add('timer-low');
         if (timer <= 0) failTurn();
       }, 1000);
-
       gameActive = true;
     }
 
@@ -171,7 +248,7 @@
       if (!gameActive) return;
       const word = typed.toLowerCase();
       if (word.length < 3) return error("Too short!");
-      if (currentLetter && word[0] !== currentLetter) return error("Wrong letter!");
+      if (currentLetter && word[0] !== currentLetter) return error("Wrong start!");
       if (!words.includes(word)) return error("Not a word!");
       if (used.has(word)) return error("Already used!");
 
@@ -182,25 +259,24 @@
       if (streak > best) {
         best = streak;
         localStorage.setItem('lastLetterBest', best);
+        bestScoreEl.textContent = best;
       }
       updateStreak();
       typedEl.style.color = '#0f0';
-      setTimeout(nextTurn, 700);
+      setTimeout(nextTurn, 600);
     }
 
     function failTurn() {
       clearInterval(timerId);
       lives--;
       updateHearts();
-      error(lives > 0 ? "Time out!" : "GAME OVER");
       if (lives === 0) {
         gameActive = false;
-        setTimeout(() => {
-          msgEl.innerHTML = `GAME OVER<br>STREAK ${streak} | BEST ${best}<br><button onclick="location.reload()" style="margin-top:20px;padding:15px 40px;font-size:28px;background:#0f0;color:#000;border:none;border-radius:12px;cursor:pointer;">PLAY AGAIN</button>`;
-          msgEl.style.opacity = 1;
-        }, 800);
+        finalStreakEl.textContent = streak;
+        gameOverEl.classList.add('show');
       } else {
-        setTimeout(nextTurn, 1200);
+        error("Time out!");
+        setTimeout(nextTurn, 1000);
       }
     }
 
@@ -208,18 +284,17 @@
       tries--;
       if (tries <= 0) { failTurn(); return; }
       msgEl.textContent = text;
-      msgEl.style.opacity = 1;
-      setTimeout(() => msgEl.style.opacity = 0, 900);
+      msgEl.classList.add('show');
+      setTimeout(() => msgEl.classList.remove('show'), 1000);
     }
 
     function updateHearts() {
-      heartsEl.textContent = 'Hearts'.repeat(lives) + 'Broken Heart'.repeat(3-lives);
+      heartsEl.innerHTML = 'Hearts'.repeat(lives) + 'Broken Heart'.repeat(3-lives);
     }
     function updateStreak() {
       streakEl.textContent = streak;
     }
 
-    // Keyboard typing
     document.addEventListener('keydown', e => {
       if (!gameActive) return;
       if (/^[a-zA-Z]$/.test(e.key)) {
@@ -232,9 +307,6 @@
         submitWord();
       }
     });
-
-    // Init
-    updateHearts();
   </script>
 </body>
 </html>
