@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LAST LETTER • Endless</title>
+  <title>LAST LETTER • Random Mode</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Roboto+Mono:wght@400;700&display=swap');
 
@@ -52,6 +52,7 @@
       width: 100%;
       max-width: 500px;
       padding: 20px;
+      text-align: center;
     }
     #topBar {
       display: flex;
@@ -64,7 +65,6 @@
     .streak { color: #ffeb3b; text-shadow: 0 0 15px gold; }
 
     #center {
-      text-align: center;
       margin: 60px 0;
     }
     #requiredLetter {
@@ -82,8 +82,6 @@
       text-shadow: 0 0 40px #0f0;
       display: inline-block;
       margin-left: 20px;
-      min-height: 160px;
-      line-height: 1;
     }
 
     #timer {
@@ -155,11 +153,13 @@
 </head>
 <body>
 
+  <!-- Start Screen -->
   <div id="startScreen">
     <h1 id="title">LAST LETTER</h1>
     <button id="startBtn" onclick="startGame()">PLAY</button>
   </div>
 
+  <!-- Game Screen -->
   <div id="game">
     <div id="topBar">
       <div class="hearts" id="hearts">Hearts Hearts Hearts</div>
@@ -173,13 +173,11 @@
       </div>
     </div>
 
-    <div style="text-align:center">
-      <div id="timer">10</div>
-    </div>
-
+    <div id="timer">10</div>
     <div id="msg"></div>
   </div>
 
+  <!-- Game Over Screen -->
   <div id="gameOver">
     <div id="gameOverText">GAME OVER</div>
     <div id="finalStreak">0</div>
@@ -203,13 +201,19 @@
     let lives = 3, tries = 3, streak = 0, best = 0;
     let timer = 10, timerId = null, gameActive = false;
 
-    // MIT 10k word list (loaded from URL)
+    // Load MIT 10,000 most common words
     fetch('https://www.mit.edu/~ecprice/wordlist.10000')
       .then(r => r.text())
-      .then(t => {
-        words = t.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(w => /^[a-z]+$/.test(w) && w.length >= 1);
+      .then(text => {
+        words = text.split('\n')
+          .map(w => w.trim().toLowerCase())
+          .filter(w => /^[a-z]+$/.test(w) && w.length >= 1);
+        console.log('Wordlist loaded:', words.length, 'words');
       })
-      .catch(e => console.error('Failed to load wordlist:', e));
+      .catch(() => {
+        // Fallback if blocked
+        words = ['the','of','and','a','to','in','is','you','that','it','he','was','for','on','are','as','with','his','they','be','at','one','have','this','from','or','had','by','word','but','not','what','all','were','we','when','your','can','said','there','use','an','each','which','she','do','how','their','if','will','up','other','about','out','many','then','them','these','so','some','her','would','make','like','him','into','time','has','look','two','more','go','see','no','way','could','my','than','first','been','call','who','its','now','find','long','down','day','did','get','come','made','may','part'];
+      });
 
     function startGame() {
       document.getElementById('startScreen').style.display = 'none';
@@ -230,12 +234,11 @@
       typed = ''; typedEl.textContent = '';
       tries = 3;
 
-      // Random letter (a-z) every turn, except first
       if (chain.length === 0) {
         requiredEl.textContent = 'ANY';
         currentLetter = '';
       } else {
-        currentLetter = String.fromCharCode(97 + Math.floor(Math.random() * 26)); // 'a' to 'z'
+        currentLetter = String.fromCharCode(97 + Math.floor(Math.random() * 26));
         requiredEl.textContent = currentLetter.toUpperCase();
       }
 
@@ -257,9 +260,9 @@
       const word = typed.toLowerCase();
 
       if (!/^[a-z]+$/.test(word)) return error("Letters only!");
-      if (currentLetter && word[0] !== currentLetter) return error("Wrong start!");
-      if (!words.includes(word)) return error("Not in wordlist!");
-      if (used.has(word)) return error("Already used!");
+      if (currentLetter && word[0] !== currentLetter) return error("Wrong letter!");
+      if (!words.includes(word)) return error("Not in list!");
+      if (used.has(word)) return error("Used!");
 
       clearInterval(timerId);
       used.add(word);
@@ -297,7 +300,7 @@
     }
 
     function updateHearts() {
-      heartsEl.innerHTML = '❤️'.repeat(lives) + '💔'.repeat(3-lives);
+      heartsEl.innerHTML = 'Hearts'.repeat(lives) + 'Broken Heart'.repeat(3-lives);
     }
     function updateStreak() {
       streakEl.textContent = streak;
