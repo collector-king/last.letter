@@ -131,18 +131,26 @@
     const finalStreakEl = document.getElementById('finalStreak');
     const bestScoreEl = document.getElementById('bestScore');
 
-    let words = [], used = new Set(), chain = [];
+    let words = new Set(); // Using Set for O(1) lookup
+    let used = new Set(), chain = [];
     let currentLetter = '', typed = '';
     let lives = 3, tries = 3, streak = 0, best = 0;
     let timer = 10, timerId = null, gameActive = false;
 
-    // Load MIT 10k word list
+    // Load MIT 10k wordlist with proper cleaning + fallback
     fetch('https://www.mit.edu/~ecprice/wordlist.10000')
       .then(r => r.text())
       .then(text => {
-        words = text.split('\n')
-          .map(w => w.trim().toLowerCase())
-          .filter(w => /^[a-z]+$/.test(w) && w.length >= 1);
+        text.split(/\r?\n/)
+          .map(line => line.trim().toLowerCase())
+          .filter(w => /^[a-z]+$/.test(w) && w.length >= 2)
+          .forEach(w => words.add(w));
+        console.log("Wordlist loaded:", words.size, "words");
+      })
+      .catch(() => {
+        // Fallback if blocked
+        const fallback = ["the","of","and","a","to","in","is","you","that","it","he","was","for","on","are","as","with","his","they","be","at","one","have","this","from","or","had","by","word","but","not","what","all","were","we","when","your","can","said","there","use","an","each","which","she","do","how","their","if","will","up","other","about","out","many","then","them","these","so","some","her","would","make","like","him","into","time","has","look","two","more","go","see","no","way","could","my","than","first","been","call","who","its","now","find","long","down","day","did","get","come","made","may","part","night","light","right","might","fight","thought","through","after","back","give","most","just","name","good","new","very","over","man","me","too","any","only","little","work","know","place","year","live","give","sentence","great","think","say","help","low","line","before","turn","cause","much","mean","same","tell","boy","follow","came","want","show","also","around","form","three","small","set","put","end","does","another","well","large","must","big","even","such","because","turn","here","why","ask","went","men","read","need","land","different","home","us","move","try","kind","hand","picture","again","change","off","play","spell","air","away","animal","house","point","page","letter","mother","answer","found","study","still","learn","should","america","world"];
+        fallback.forEach(w => words.add(w));
       });
 
     function getRandomLetter() {
@@ -187,10 +195,10 @@
     function submitWord() {
       if (!gameActive) return;
 
-      const word = typed.toLowerCase();           // ← convert to lowercase FIRST
+      const word = typed.toLowerCase();
       if (!/^[a-z]+$/.test(word)) return error("Letters only!");
-      if (word[0] !== currentLetter) return error("Wrong letter!");  // ← now compares correctly
-      if (!words.includes(word)) return error("Not in list!");
+      if (word[0] !== currentLetter) return error("Wrong letter!");
+      if (!words.has(word)) return error("Not a valid word!");
       if (used.has(word)) return error("Already used!");
 
       clearInterval(timerId);
