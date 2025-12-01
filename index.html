@@ -168,7 +168,7 @@
 
     <div id="center">
       <div>
-        <span id="requiredLetter">ANY</span>
+        <span id="requiredLetter">A</span>
         <span id="typedWord"></span>
       </div>
     </div>
@@ -208,12 +208,11 @@
         words = text.split('\n')
           .map(w => w.trim().toLowerCase())
           .filter(w => /^[a-z]+$/.test(w) && w.length >= 1);
-        console.log('Wordlist loaded:', words.length, 'words');
-      })
-      .catch(() => {
-        // Fallback if blocked
-        words = ['the','of','and','a','to','in','is','you','that','it','he','was','for','on','are','as','with','his','they','be','at','one','have','this','from','or','had','by','word','but','not','what','all','were','we','when','your','can','said','there','use','an','each','which','she','do','how','their','if','will','up','other','about','out','many','then','them','these','so','some','her','would','make','like','him','into','time','has','look','two','more','go','see','no','way','could','my','than','first','been','call','who','its','now','find','long','down','day','did','get','come','made','may','part'];
       });
+
+    function getRandomLetter() {
+      return String.fromCharCode(97 + Math.floor(Math.random() * 26)); // a-z
+    }
 
     function startGame() {
       document.getElementById('startScreen').style.display = 'none';
@@ -221,7 +220,7 @@
       best = parseInt(localStorage.getItem('lastLetterBest') || '0');
       bestScoreEl.textContent = best;
       resetGame();
-      nextTurn();
+      nextTurn(); // This will now set a random letter from the very first turn
     }
 
     function resetGame() {
@@ -234,13 +233,9 @@
       typed = ''; typedEl.textContent = '';
       tries = 3;
 
-      if (chain.length === 0) {
-        requiredEl.textContent = 'ANY';
-        currentLetter = '';
-      } else {
-        currentLetter = String.fromCharCode(97 + Math.floor(Math.random() * 26));
-        requiredEl.textContent = currentLetter.toUpperCase();
-      }
+      // ALWAYS random letter — even on the very first word!
+      currentLetter = getRandomLetter();
+      requiredEl.textContent = currentLetter.toUpperCase();
 
       timer = 10;
       timerEl.textContent = timer;
@@ -260,9 +255,9 @@
       const word = typed.toLowerCase();
 
       if (!/^[a-z]+$/.test(word)) return error("Letters only!");
-      if (currentLetter && word[0] !== currentLetter) return error("Wrong letter!");
+      if (word[0] !== currentLetter) return error("Wrong letter!");
       if (!words.includes(word)) return error("Not in list!");
-      if (used.has(word)) return error("Used!");
+      if (used.has(word)) return error("Already used!");
 
       clearInterval(timerId);
       used.add(word);
