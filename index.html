@@ -20,7 +20,6 @@
       user-select: none;
     }
 
-    /* Start Screen */
     #startScreen {
       text-align: center;
       animation: fadeIn 1.5s;
@@ -30,7 +29,6 @@
       font-size: 80px;
       background: linear-gradient(90deg, #0f0, #0ff);
       -webkit-background-clip: text;
-      background-clip: text;
       color: transparent;
       text-shadow: 0 0 40px rgba(0,255,0,0.5);
       margin-bottom: 30px;
@@ -49,7 +47,6 @@
     }
     #startBtn:hover { transform: translateY(-10px); box-shadow: 0 20px 50px rgba(0,255,255,0.6); }
 
-    /* Game UI */
     #game {
       display: none;
       width: 100%;
@@ -66,7 +63,6 @@
     .hearts { color: #ff3366; text-shadow: 0 0 10px #ff3366; }
     .streak { color: #ffeb3b; text-shadow: 0 0 15px gold; }
 
-    /* Main Letter + Typing Area */
     #center {
       text-align: center;
       margin: 60px 0;
@@ -90,7 +86,6 @@
       line-height: 1;
     }
 
-    /* Timer */
     #timer {
       font-size: 60px;
       font-weight: bold;
@@ -98,11 +93,11 @@
       text-shadow: 0 0 20px #ff3366;
     }
     .timer-low { animation: pulse 0.6s infinite; }
-    @keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.1); } }
+
+    @keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.15); } }
     @keyframes glow { from { text-shadow: 0 0 60px #0ff; } to { text-shadow: 0 0 100px #0ff, 0 0 150px #0ff; } }
     @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
 
-    /* Messages */
     #msg {
       position: fixed;
       bottom: 100px;
@@ -119,44 +114,53 @@
     }
     #msg.show { opacity: 1; bottom: 120px; }
 
-    /* Game Over */
     #gameOver {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.95);
+      background: rgba(0,0,0,0.97);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-size: 50px;
+      font-family: 'Orbitron', sans-serif;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.6s;
+      transition: opacity 0.8s;
+      z-index: 999;
     }
     #gameOver.show { opacity: 1; pointer-events: all; }
-    #finalStreak { color: #ffeb3b; margin: 20px 0; font-size: 80px; }
+    #gameOverText {
+      font-size: 100px;
+      color: #ff0033;
+      text-shadow: 0 0 40px #ff0033;
+      animation: flicker 2s infinite;
+    }
+    #finalStreak { font-size: 80px; color: #ffeb3b; margin: 30px 0; text-shadow: 0 0 30px gold; }
+    #bestText { font-size: 32px; color: #aaa; margin-bottom: 40px; }
     #restartBtn {
-      margin-top: 40px;
-      padding: 20px 60px;
-      font-size: 32px;
+      padding: 20px 70px;
+      font-size: 36px;
       background: #0f0;
       color: #000;
       border: none;
       border-radius: 50px;
       cursor: pointer;
+      box-shadow: 0 0 40px #0f0;
+      transition: 0.3s;
     }
+    #restartBtn:hover { transform: scale(1.1); }
+
+    @keyframes flicker { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } 75% { opacity: 0.9; } }
   </style>
 </head>
 <body>
 
-  <!-- Start Screen -->
   <div id="startScreen">
     <h1 id="title">LAST LETTER</h1>
     <button id="startBtn" onclick="startGame()">PLAY</button>
   </div>
 
-  <!-- Game -->
-  <div id="game">
+  <div id="gameOver">
     <div id="topBar">
       <div class="hearts" id="hearts">Hearts Hearts Hearts</div>
       <div class="streak">STREAK <span id="streakNum">0</span></div>
@@ -176,11 +180,10 @@
     <div id="msg"></div>
   </div>
 
-  <!-- Game Over Screen -->
   <div id="gameOver">
-    <div>GAME OVER</div>
+    <div id="gameOverText">GAME OVER</div>
     <div id="finalStreak">0</div>
-    <div style="font-size:28px; color:#aaa;">Best: <span id="bestScore">0</span></div>
+    <div id="bestText">Best: <span id="bestScore">0</span></div>
     <button id="restartBtn" onclick="location.reload()">PLAY AGAIN</button>
   </div>
 
@@ -195,15 +198,30 @@
     const finalStreakEl = document.getElementById('finalStreak');
     const bestScoreEl = document.getElementById('bestScore');
 
-    let words = [], used = new Set(), chain = [];
+    let used = new Set(), chain = [];
     let currentLetter = '', typed = '';
     let lives = 3, tries = 3, streak = 0, best = 0;
     let timer = 10, timerId = null, gameActive = false;
 
-    // Load dictionary
+    // === HUGE FORGIVING WORD LIST (includes short words, slang, etc.) ===
+    const forgivingWords = new Set([
+      // Short & common
+      "a","i","o","ok","yo","hi","no","go","up","to","at","on","in","it","is","as","be","we","he","me","my","by","do","if","or","so","an","of","and","the",
+      // Internet slang & fun
+      "lol","brb","omg","lmao","rofl","gg","wp","ez","afk","btw","idk","tbh","fyi","imo","imho","nsfw","tldr","ftw","irl","bruh","sus","yeet","pog","lit","fam","vibe","flex","based","cringe","cap","no cap","bet","fr","ong","deadass","slay","tea","spill","mood","facts","big mood","woke","ghost","vibe check","ratio","L","W","ratioed",
+      // Extra short & random
+      "cat","dog","rat","bat","hat","fat","mat","pat","sat","eat","bit","fit","hit","kit","lit","mit","pit","sit","wit","zip","rip","dip","lip","nip","sip","tip","yo","sup","wassup","nah","yep","nope","ugh","eww","yay","lol","xd","xd","rip","f","f in chat","oof","big oof"
+    ]);
+
+    // Load full dictionary + merge with our fun list
     fetch('https://raw.githubusercontent.com/dwyl/english-words/master/words_alpha.txt')
       .then(r => r.text())
-      .then(t => words = t.split('\n').map(w=>w.trim().toLowerCase()).filter(w=>w.length>=3));
+      .then(t => {
+        t.split('\n').forEach(w => {
+          const word = w.trim().toLowerCase();
+          if (word.length >= 1 && /^[a-z]+$/.test(word)) forgivingWords.add(word);
+        });
+      });
 
     function startGame() {
       document.getElementById('startScreen').style.display = 'none';
@@ -217,6 +235,7 @@
     function resetGame() {
       used.clear(); chain = []; typed = ''; lives = 3; tries = 3; streak = 0;
       updateHearts(); updateStreak();
+      gameOverEl.classList.remove('show');
     }
 
     function nextTurn() {
@@ -247,11 +266,13 @@
     function submitWord() {
       if (!gameActive) return;
       const word = typed.toLowerCase();
-      if (word.length < 3) return error("Too short!");
+
+      // ACCEPT ANYTHING 1+ letters, a-z only
+      if (!/^[a-z]+$/.test(word)) return error("Letters only!");
       if (currentLetter && word[0] !== currentLetter) return error("Wrong start!");
-      if (!words.includes(word)) return error("Not a word!");
       if (used.has(word)) return error("Already used!");
 
+      // SUCCESS — even "a", "i", "lol", "yeet", "bruh" work!
       clearInterval(timerId);
       used.add(word);
       chain.push(word);
@@ -262,7 +283,6 @@
         bestScoreEl.textContent = best;
       }
       updateStreak();
-      typedEl.style.color = '#0f0';
       setTimeout(nextTurn, 600);
     }
 
