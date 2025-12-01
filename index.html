@@ -20,10 +20,7 @@
       user-select: none;
     }
 
-    #startScreen {
-      text-align: center;
-      animation: fadeIn 1.5s;
-    }
+    #startScreen { text-align: center; animation: fadeIn 1.5s; }
     #title {
       font-family: 'Orbitron', sans-serif;
       font-size: 80px;
@@ -34,62 +31,31 @@
       margin-bottom: 30px;
     }
     #startBtn {
-      padding: 20px 80px;
-      font-size: 36px;
-      font-weight: bold;
+      padding: 20px 80px; font-size: 36px; font-weight: bold;
       background: linear-gradient(45deg, #00ff9d, #00bfff);
-      color: #000;
-      border: none;
-      border-radius: 50px;
-      cursor: pointer;
-      box-shadow: 0 10px 30px rgba(0,255,255,0.4);
-      transition: all 0.3s;
+      color: #000; border: none; border-radius: 50px; cursor: pointer;
+      box-shadow: 0 10px 30px rgba(0,255,255,0.4); transition: all 0.3s;
     }
     #startBtn:hover { transform: translateY(-10px); box-shadow: 0 20px 50px rgba(0,255,255,0.6); }
 
-    #game {
-      display: none;
-      width: 100%;
-      max-width: 500px;
-      padding: 20px;
-      text-align: center;
-    }
-    #topBar {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 40px;
-      font-size: 24px;
-      font-weight: bold;
-    }
+    #game { display: none; width: 100%; max-width: 500px; padding: 20px; text-align: center; }
+    #topBar { display: flex; justify-content: space-between; margin-bottom: 40px; font-size: 24px; font-weight: bold; }
     .hearts { color: #ff3366; text-shadow: 0 0 10px #ff3366; }
     .streak { color: #ffeb3b; text-shadow: 0 0 15px gold; }
 
-    #center {
-      margin: 60px 0;
-    }
+    #center { margin: 60px 0; }
     #requiredLetter {
-      font-size: 200px;
-      font-weight: bold;
-      color: #0ff;
+      font-size: 200px; font-weight: bold; color: #0ff;
       text-shadow: 0 0 60px #0ff, 0 0 120px #0ff;
-      display: inline-block;
-      min-width: 200px;
+      display: inline-block; min-width: 200px;
       animation: glow 3s infinite alternate;
     }
     #typedWord {
-      font-size: 140px;
-      color: #0f0;
-      text-shadow: 0 0 40px #0f0;
-      display: inline-block;
-      margin-left: 20px;
+      font-size: 140px; color: #0f0; text-shadow: 0 0 40px #0f0;
+      display: inline-block; margin-left: 20px;
     }
 
-    #timer {
-      font-size: 60px;
-      font-weight: bold;
-      color: #ff3366;
-      text-shadow: 0 0 20px #ff3366;
-    }
+    #timer { font-size: 60px; font-weight: bold; color: #ff3366; text-shadow: 0 0 20px #ff3366; }
     .timer-low { animation: pulse 0.6s infinite; }
 
     @keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.15); } }
@@ -97,69 +63,39 @@
     @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
 
     #msg {
-      position: fixed;
-      bottom: 100px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 36px;
-      font-weight: bold;
-      padding: 15px 40px;
-      background: rgba(255,0,102,0.2);
-      border: 2px solid #ff3366;
-      border-radius: 50px;
-      opacity: 0;
-      transition: all 0.4s;
+      position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+      font-size: 36px; font-weight: bold; padding: 15px 40px;
+      background: rgba(255,0,102,0.2); border: 2px solid #ff3366; border-radius: 50px;
+      opacity: 0; transition: all 0.4s;
     }
     #msg.show { opacity: 1; bottom: 120px; }
 
     #gameOver {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.97);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      font-family: 'Orbitron', sans-serif;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.8s;
-      z-index: 999;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.97);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-family: 'Orbitron', sans-serif; opacity: 0; pointer-events: none;
+      transition: opacity 0.8s; z-index: 999;
     }
     #gameOver.show { opacity: 1; pointer-events: all; }
-    #gameOverText {
-      font-size: 100px;
-      color: #ff0033;
-      text-shadow: 0 0 40px #ff0033;
-      animation: flicker 2s infinite;
-    }
+    #gameOverText { font-size: 100px; color: #ff0033; text-shadow: 0 0 40px #ff0033; animation: flicker 2s infinite; }
     #finalStreak { font-size: 80px; color: #ffeb3b; margin: 30px 0; text-shadow: 0 0 30px gold; }
     #bestText { font-size: 32px; color: #aaa; margin-bottom: 40px; }
     #restartBtn {
-      padding: 20px 70px;
-      font-size: 36px;
-      background: #0f0;
-      color: #000;
-      border: none;
-      border-radius: 50px;
-      cursor: pointer;
-      box-shadow: 0 0 40px #0f0;
-      transition: 0.3s;
+      padding: 20px 70px; font-size: 36px; background: #0f0; color: #000;
+      border: none; border-radius: 50px; cursor: pointer;
+      box-shadow: 0 0 40px #0f0; transition: 0.3s;
     }
     #restartBtn:hover { transform: scale(1.1); }
-
     @keyframes flicker { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } 75% { opacity: 0.9; } }
   </style>
 </head>
 <body>
 
-  <!-- Start Screen -->
   <div id="startScreen">
     <h1 id="title">LAST LETTER</h1>
     <button id="startBtn" onclick="startGame()">PLAY</button>
   </div>
 
-  <!-- Game Screen -->
   <div id="game">
     <div id="topBar">
       <div class="hearts" id="hearts">Hearts Hearts Hearts</div>
@@ -177,7 +113,6 @@
     <div id="msg"></div>
   </div>
 
-  <!-- Game Over Screen -->
   <div id="gameOver">
     <div id="gameOverText">GAME OVER</div>
     <div id="finalStreak">0</div>
@@ -201,7 +136,7 @@
     let lives = 3, tries = 3, streak = 0, best = 0;
     let timer = 10, timerId = null, gameActive = false;
 
-    // Load MIT 10,000 most common words
+    // Load MIT 10k word list
     fetch('https://www.mit.edu/~ecprice/wordlist.10000')
       .then(r => r.text())
       .then(text => {
@@ -211,7 +146,7 @@
       });
 
     function getRandomLetter() {
-      return String.fromCharCode(97 + Math.floor(Math.random() * 26)); // a-z
+      return String.fromCharCode(97 + Math.floor(Math.random() * 26));
     }
 
     function startGame() {
@@ -220,7 +155,7 @@
       best = parseInt(localStorage.getItem('lastLetterBest') || '0');
       bestScoreEl.textContent = best;
       resetGame();
-      nextTurn(); // This will now set a random letter from the very first turn
+      nextTurn();
     }
 
     function resetGame() {
@@ -233,7 +168,6 @@
       typed = ''; typedEl.textContent = '';
       tries = 3;
 
-      // ALWAYS random letter — even on the very first word!
       currentLetter = getRandomLetter();
       requiredEl.textContent = currentLetter.toUpperCase();
 
@@ -252,10 +186,10 @@
 
     function submitWord() {
       if (!gameActive) return;
-      const word = typed.toLowerCase();
 
+      const word = typed.toLowerCase();           // ← convert to lowercase FIRST
       if (!/^[a-z]+$/.test(word)) return error("Letters only!");
-      if (word[0] !== currentLetter) return error("Wrong letter!");
+      if (word[0] !== currentLetter) return error("Wrong letter!");  // ← now compares correctly
       if (!words.includes(word)) return error("Not in list!");
       if (used.has(word)) return error("Already used!");
 
