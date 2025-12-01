@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LAST LETTER • Classic</title>
+  <title>LAST LETTER • Roblox Style (No First Letter)</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Roboto+Mono:wght@700&display=swap');
     *{margin:0;padding:0;box-sizing:border-box;}
@@ -31,7 +31,7 @@
 
   <div id="start">
     <h1>LAST LETTER</h1>
-    <p style="font-size:28px;margin:20px;color:#0f0;">Type any word that <strong>STARTS</strong> with the letter</p>
+    <p style="font-size:28px;margin:20px;color:#0f0;">Type the REST of the word (after the first letter)</p>
     <button onclick="startGame()">PLAY</button>
   </div>
 
@@ -62,12 +62,12 @@
     let timer = 10, timerId = null, playing = false;
 
     // Load your word.txt (400k words)
-    fetch('word.txt?t=' + Date.now()) // cache buster
+    fetch('word.txt?t=' + Date.now())
       .then(r => r.text())
       .then(text => {
         text.split('\n').forEach(line => {
           const w = line.trim().toLowerCase();
-          if (w.length >= 1 && /^[a-z]+$/.test(w)) words.add(w);
+          if (w.length >= 2 && /^[a-z]+$/.test(w)) words.add(w);  // Min 2 letters since we skip first
         });
         console.log('Loaded', words.size, 'words from word.txt');
       })
@@ -96,7 +96,7 @@
         letterEl.textContent = 'ANY';
         currentLetter = '';
       } else {
-        currentLetter = getRandomFromLastWord();
+        currentLetter = lastWord.slice(-1);  // Last letter of previous word
         letterEl.textContent = currentLetter.toUpperCase();
       }
 
@@ -110,25 +110,23 @@
       playing = true;
     }
 
-    function getRandomFromLastWord() {
-      // We'll store the last word in a variable
-      return lastWord ? lastWord.slice(-1) : String.fromCharCode(97 + Math.floor(Math.random()*26));
-    }
-
     let lastWord = '';
 
     function submit() {
       if (!playing) return;
-      const word = typed.toLowerCase();
 
-      if (word.length < 1) return msg("Too short!");
-      if (currentLetter && word[0] !== currentLetter) return msg("Must start with " + currentLetter.toUpperCase() + "!");
-      if (!words.has(word)) return msg("Not in list!");
-      if (used.has(word)) return msg("Already used!");
+      const rest = typed.toLowerCase();
+      if (rest.length < 1) return msg("Too short!");
+      if (currentLetter && rest.length + 1 < 2) return msg("Word too short!");
+
+      const fullWord = currentLetter + rest;  // Add the first letter back
+      if (currentLetter && fullWord[0] !== currentLetter) return msg("Invalid!");
+      if (!words.has(fullWord)) return msg("Not in list!");
+      if (used.has(fullWord)) return msg("Already used!");
 
       clearInterval(timerId);
-      used.add(word);
-      lastWord = word;
+      used.add(fullWord);
+      lastWord = fullWord;
       streak++;
       if (streak > best) { best = streak; localStorage.setItem('lastLetterBest', best); bestEl.textContent = best; }
       updateHUD();
