@@ -5,36 +5,70 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LAST LETTER • Roblox Style</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Roboto+Mono:wght@700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..800&display=swap');
+
     *{margin:0;padding:0;box-sizing:border-box;}
     body{
-      height:100vh;background:#000;color:#0f0;font-family:'Roboto Mono',monospace;
+      height:100vh;background:#000;color:#0f0;font-family:'JetBrains Mono',monospace;
       display:flex;flex-direction:column;align-items:center;justify-content:center;
       user-select:none;overflow:hidden;
     }
-    h1{font-family:'Orbitron',sans-serif;font-size:80px;color:#0f0;text-shadow:0 0 40px #0f0;margin:30px;}
+    h1{font-family:'JetBrains Mono',sans-serif;font-size:80px;color:#0f0;text-shadow:0 0 40px #0f0;margin:30px;}
     button{padding:20px 80px;font-size:40px;background:#0f0;color:#000;border:none;border-radius:20px;cursor:pointer;box-shadow:0 0 50px #0f0;}
     button:hover{transform:scale(1.1);}
     #game{display:none;flex-direction:column;align-items:center;}
+    
+    /* Word line with dark box + moving gradient inside */
     #word-line{
-      display:flex;align-items:baseline;justify-content:center;
+      display:flex;align-items:center;justify-content:center;
       margin:80px 0 40px 0;
-      min-height:260px;
+      padding:40px 80px;
+      background:#111;
+      border-radius:40px;
+      box-shadow:0 0 80px rgba(0,255,255,0.4), inset 0 0 80px rgba(0,0,0,0.6);
+      position:relative;
+      overflow:hidden;
     }
+    
+    /* Moving gradient background inside the box */
+    #word-line::before{
+      content:'';
+      position:absolute;
+      inset:0;
+      background:linear-gradient(90deg, #0ff, #0f0, #ff0, #f0f, #0ff, #0f0);
+      background-size:400% 400%;
+      animation:gradientFlow 12s ease infinite;
+      opacity:0.6;
+      z-index:1;
+    }
+    
+    /* Letters on top of gradient */
     #letter{
-      font-size:280px;color:#0ff;text-shadow:0 0 80px #0ff;
-      animation:glow-letter 3s infinite alternate;
+      font-size:300px;color:#0ff;text-shadow:0 0 80px #0ff;
+      position:relative;z-index:2;
+      animation:pulseLetter 4s ease-in-out infinite;
     }
     #typed{
-      font-size:220px;color:#0f0;text-shadow:0 0 60px #0f0;margin-left:20px;
+      font-size:240px;color:#0f0;text-shadow:0 0 60px #0f0;margin-left:40px;
+      position:relative;z-index:2;
       min-width:100px;
     }
+    
     #timer{font-size:70px;color:#f33;margin:20px;}
     #hud{position:absolute;top:20px;left:20px;font-size:24px;color:#fff;}
     #msg{position:fixed;bottom:100px;font-size:40px;color:#f66;background:rgba(0,0,0,0.7);padding:15px 40px;border-radius:20px;opacity:0;transition:all .4s;}
     #msg.show{opacity:1;bottom:120px;}
     .pulse{animation:pulse 0.6s infinite;}
-    @keyframes glow-letter{from{text-shadow:0 0 80px #0ff}to{text-shadow:0 0 140px #0ff}}
+    
+    @keyframes gradientFlow{
+      0%{background-position:0% 50%}
+      50%{background-position:100% 50%}
+      100%{background-position:0% 50%}
+    }
+    @keyframes pulseLetter{
+      0%,100%{transform:scale(1)}
+      50%{transform:scale(1.05)}
+    }
     @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
   </style>
 </head>
@@ -42,7 +76,7 @@
 
   <div id="start">
     <h1>LAST LETTER</h1>
-    <p style="font-size:28px;margin:20px;color:#0f0;">Type the rest of the word (you DON'T type the first letter)</p>
+    <p style="font-size:28px;margin:20px;color:#0f0;">You DON'T type the first letter — just the rest!</p>
     <button onclick="startGame()">PLAY</button>
   </div>
 
@@ -77,7 +111,7 @@
     let timer = 10, timerId = null, playing = false;
     let lastWord = '';
 
-    // Load your word.txt
+    // Load your 400k word.txt
     fetch('word.txt?t=' + Date.now())
       .then(r => r.text())
       .then(text => {
@@ -85,7 +119,7 @@
           const w = line.trim().toLowerCase();
           if (w.length >= 2 && /^[a-z]+$/.test(w)) words.add(w);
         });
-        console.log('Loaded', words.size, 'words');
+        console.log('Loaded', words.size, 'words from word.txt');
       });
 
     function startGame() {
