@@ -40,7 +40,7 @@
 
     <div id="leaderboard">
       <h2>GLOBAL LEADERBOARD</h2>
-      <ol id="lb-list"><div style="color:#666;text-align:center;font-style:italic;">Loading...</div></ol>
+      <ol id="lb-list"><div style="color:#666;">Loading...</div></ol>
     </div>
   </div>
 
@@ -54,35 +54,41 @@
   <script type="module">
     import { Redis } from "https://cdn.jsdelivr.net/npm/@upstash/redis@latest/+esm";
 
-    // ←←← THIS LINE WILL BE REPLACED BY VERCEL ←←←
-    const REDIS_URL = "REDIS_URL_WILL_BE_REPLACED_BY_VERCEL";
+    // ←←← VERCEL WILL REPLACE THE ENTIRE LINE BELOW ←←←
+    const REDIS_URL = "___REDIS_URL___";
 
-    let redis;
-    if (REDIS_URL && !REDIS_URL.includes("REDIS_URL_WILL_BE_REPLACED")) {
-      const url = new URL(REDIS_URL.replace(/^redis:\/\//, 'https://'));
-      redis = new Redis({
-        url: url.origin + url.pathname,
-        token: url.password,
-      });
+    let redis = null;
+    if (REDIS_URL && REDIS_URL !== "___REDIS_URL___") {
+      try {
+        const url = new URL(REDIS_URL.replace('redis://', 'https://'));
+        redis = new Redis({
+          url: url.origin + url.pathname,
+          token: url.password,
+        });
+      } catch (e) {
+        console.error("Bad Redis URL");
+      }
     }
 
     const KEY = "lastletter:global";
 
     async function loadLB() {
+      const list = document.getElementById("lb-list");
       if (!redis) {
-        document.getElementById("lb-list").innerHTML = '<div style="color:#666;">Leaderboard disabled (local)</div>';
+        list.innerHTML = '<div style="color:#888;">Leaderboard (local mode)</div>';
         return;
       }
       try {
         const data = await redis.zrange(KEY, 0, -1, { withScores: true });
-        const list = document.getElementById("lb-list");
         list.innerHTML = "";
         if (!data?.length) {
           list.innerHTML = '<div style="color:#666;font-style:italic;">No scores yet — be the first!</div>';
           return;
         }
         const entries = [];
-        for (let i = 0; i < data.length; i += 2) entries.push({ name: data[i], score: Number(data[i+1]) });
+        for (let i = 0; i < data.length; i += 2) {
+          entries.push({ name: data[i], score: Number(data[i + 1]) });
+        }
         entries.sort((a, b) => b.score - a.score);
         entries.slice(0, 10).forEach((e, i) => {
           const li = document.createElement("li");
@@ -91,44 +97,38 @@
           list.appendChild(li);
         });
       } catch (e) {
-        document.getElementById("lb-list").innerHTML = '<div style="color:#c00;">Leaderboard offline</div>';
+        list.innerHTML = '<div style="color:#c00;">Leaderboard offline</div>';
       }
     }
 
     async function saveScore(name, score) {
-      if (!redis) return;
-      await redis.zadd(KEY, { score, member: name.substring(0,20) || "Anonymous" });
+      if (redis) await redis.zadd(KEY, { score, member: name.substring(0,20) || "Anonymous" });
       loadLB();
     }
 
     loadLB();
     setInterval(loadLB, 15000);
 
-    // ==================== GAME CODE =====
+    // ==================== GAME (unchanged) ====================
     let words = new Set(), used = new Set(), currentLetter = "", typed = "", lastWord = "";
     let lives = 3, streak = 0, timer = 10, timerId = null, playing = false;
 
-    fetch("word.txt?" + Date.now())
-      .then(r => r.text())
-      .then(t => t.split("\n").forEach(w => {
-        const wd = w.trim().toLowerCase();
-        if (wd.length >= 2 && /^[a-z]+$/.test(wd)) words.add(wd);
-      }));
+    fetch("word.txt?" + Date.now()).then(r => r.text()).then(t => 
+      t.split("\n").forEach(w => { const wd = w.trim().toLowerCase(); if (wd.length >= 2 && /^[a-z]+$/.test(wd)) words.add(wd); })
+    );
 
-    function startGame() {
+    document.getElementById("play-btn").addEventListener("click", () => {
       document.getElementById("start").style.display = "none";
       document.getElementById("game").style.display = "flex";
       lives = 3; streak = 0; used.clear();
       document.getElementById("hud").innerHTML = "♥♥♥ | STREAK <strong>0</strong>";
       newRound();
-    }
-    document.getElementById("play-btn").addEventListener("click", startGame);
+    });
 
     function newRound() {
       typed = ""; document.getElementById("typed").textContent = "";
       document.getElementById("letter").textContent = streak === 0 ? "ANY →" : (currentLetter = lastWord.slice(-1)).toUpperCase();
-      timer = 10; document.getElementById("timer").textContent = "10";
-      document.getElementById("timer").classList.remove("pulse");
+      timer = 10; document.getElementById("timer").textContent = "10"; document.getElementById("timer").classList.remove("pulse");
       clearInterval(timerId);
       timerId = setInterval(() => {
         timer--; document.getElementById("timer").textContent = timer;
@@ -140,18 +140,18 @@
 
     function submit() {
       if (!playing) return;
-      const full = (currentLetter + typed.toLowerCase());
+      const full = currentLetter + typed.toLowerCase();
       if (!full) return msg("Type something!");
       if (!words.has(full)) return msg("Not a word!");
       if (used.has(full)) return msg("Already used!");
       clearInterval(timerId); used.add(full); lastWord = full; streak++;
-      document.getElementById("hud").innerHTML = "♥".repeat(lives)+"💔".repeat(3-lives)+` | STREAK <strong>${streak}</strong>`;
+      document.getElementById("hud").innerHTML = "♥".repeat(lives)+"Broken Heart".repeat(3-lives)+` | STREAK <strong>${streak}</strong>`;
       setTimeout(newRound, 600);
     }
 
     async function die() {
       clearInterval(timerId); lives--;
-      document.getElementById("hud").innerHTML = "♥".repeat(lives)+"💔".repeat(3-lives)+` | STREAK <strong>${streak}</strong>`;
+      document.getElementById("hud").innerHTML = "♥".repeat(lives)+"Broken Heart".repeat(3-lives)+` | STREAK <strong>${streak}</strong>`;
       if (lives === 0) {
         playing = false;
         if (streak >= 10 && redis) {
@@ -174,13 +174,9 @@
 
     document.addEventListener("keydown", e => {
       if (!playing) return;
-      if (/^[a-zA-Z]$/.test(e.key)) {
-        typed += e.key.toLowerCase();
-        document.getElementById("typed").textContent = typed.toUpperCase();
-      } else if (e.key === "Backspace") {
-        typed = typed.slice(0,-1);
-        document.getElementById("typed").textContent = typed.toUpperCase();
-      } else if (e.key === "Enter") submit();
+      if (/^[a-zA-Z]$/.test(e.key)) { typed += e.key.toLowerCase(); document.getElementById("typed").textContent = typed.toUpperCase(); }
+      else if (e.key === "Backspace") { typed = typed.slice(0,-1); document.getElementById("typed").textContent = typed.toUpperCase(); }
+      else if (e.key === "Enter") submit();
     });
   </script>
 </body>
