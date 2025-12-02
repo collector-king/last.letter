@@ -12,18 +12,22 @@
       display:flex;flex-direction:column;align-items:center;justify-content:center;
       user-select:none;overflow:hidden;position:relative;
       background-size:cover;background-position:center;background-repeat:no-repeat;
-      transition:all 0.8s ease;color:#0f0;
+      transition:all 0.8s ease;color:#fff; /* ← DEFAULT WHITE */
     }
-    body::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,0.45);z-index:-1;}
+    body::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,0.5);z-index:-1;}
     h1{font-size:80px;text-shadow:0 0 40px currentColor;margin:30px;}
+
+    /* Buttons — bright white */
     .btn{
       padding:18px 60px;font-size:36px;margin:15px;
-      background:#0f0 !important;color:#000 !important;
+      background:#fff !important;color:#000 !important;
       border:none;border-radius:20px;cursor:pointer;
-      box-shadow:0 0 60px #0f0;transition:all .3s;font-weight:bold;
+      box-shadow:0 0 60px #fff;transition:all .3s;font-weight:bold;
     }
-    .btn:hover{transform:scale(1.12);box-shadow:0 0 90px #0ff;background:#0ff !important;}
-    #change-bg-btn{background:#00ffff !important;color:#000 !important;}
+    .btn:hover{
+      transform:scale(1.12);box-shadow:0 0 90px #fff;background:#ccc !important;
+    }
+    #change-bg-btn{background:#a0f !important;color:#fff !important;}
 
     #game{display:none;flex-direction:column;align-items:center;position:relative;z-index:1;}
     #word-line{display:flex;align-items:center;justify-content:center;margin:80px 0 40px 0;padding:50px 100px;background:rgba(0,0,0,0.65);border-radius:50px;box-shadow:0 0 100px currentColor;backdrop-filter:blur(12px);border:3px solid currentColor;}
@@ -75,11 +79,11 @@
     });
     const KEY = "lastletter:global";
 
-    // Reset to default
+    // Reset to DEFAULT WHITE theme
     function resetToDefault() {
-      document.body.style.background = "radial-gradient(circle at center, #00ff4088, #000)";
+      document.body.style.background = "radial-gradient(circle at center, rgba(255,255,255,0.3), #000)";
       document.body.style.backgroundImage = "";
-      document.body.style.color = "#0f0";
+      document.body.style.color = "#fff";
       localStorage.removeItem('lastletter-bg');
       setTimeout(() => location.reload(), 100);
     }
@@ -88,7 +92,7 @@
       resetToDefault();
     });
 
-    // Background + auto color
+    // Auto complementary color from image
     function getDominantColor(url) {
       const img = new Image(); img.crossOrigin = "anonymous";
       img.onload = () => {
@@ -116,7 +120,7 @@
     }
     const saved = localStorage.getItem('lastletter-bg');
     if (saved) applyBackground(saved);
-    else document.body.style.background = "radial-gradient(circle at center, #00ff4088, #000)";
+    else document.body.style.background = "radial-gradient(circle at center, rgba(255,255,255,0.3), #000)";
 
     document.getElementById('change-bg-btn').addEventListener('click', () => document.getElementById('bg-upload').click());
     document.getElementById('bg-upload').addEventListener('change', e => {
@@ -130,7 +134,7 @@
       setTimeout(()=>document.getElementById('msg').classList.remove('show'), 3000);
     }
 
-    // Leaderboard
+    // Leaderboard & Game (unchanged)
     async function loadLeaderboard() {
       try {
         const data = await redis.zrange(KEY, 0, 9, { rev: true, withScores: true });
@@ -139,7 +143,7 @@
         for (let i = 0; i < data.length; i += 2) {
           const li = document.createElement("li");
           li.textContent = `${data[i]} — ${data[i+1]}${i===0?" Crown":""}`;
-          if(i===0) li.style.color = document.body.style.color || "#0ff";
+          if(i===0) li.style.color = document.body.style.color || "#fff";
           list.appendChild(li);
         }
       } catch (e) { document.getElementById("lb-list").innerHTML = '<div style="color:#c00;">Offline</div>'; }
@@ -150,10 +154,9 @@
     }
     loadLeaderboard(); setInterval(loadLeaderboard, 15000);
 
-    // === GAME LOGIC ===
     let words = new Set(), used = new Set(), currentLetter = "", typed = "", lastWord = "";
     let lives = 3, streak = 0, timer = 10, timerId = null, playing = false;
-    let wordArray = []; // We'll fill this with valid words
+    let wordArray = [];
 
     fetch("word.txt?" + Date.now())
       .then(r => r.text())
@@ -172,24 +175,20 @@
       document.getElementById("game").style.display = "flex";
       lives = 3; streak = 0; used.clear();
       document.getElementById("hud").innerHTML = "Hearts Hearts Hearts | STREAK <strong>0</strong>";
-      newRound(); // Now starts with a real random word!
+      newRound();
     });
 
     function newRound() {
       typed = ""; document.getElementById("typed").textContent = "";
-
-      // NEW: First round = random word, not "ANY"
       if (streak === 0) {
         const randomWord = wordArray[Math.floor(Math.random() * wordArray.length)];
         lastWord = randomWord;
         currentLetter = randomWord.slice(-1);
-        used.add(randomWord); // Prevent reuse
+        used.add(randomWord);
       } else {
         currentLetter = lastWord.slice(-1);
       }
-
       document.getElementById("letter").textContent = currentLetter.toUpperCase();
-      
       timer = 10; document.getElementById("timer").textContent = "10";
       document.getElementById("timer").classList.remove("pulse");
       clearInterval(timerId);
@@ -205,7 +204,6 @@
       if (!playing) return;
       const full = currentLetter + typed.toLowerCase();
       if (typed.length < 3) return msg("Minimum 4 letters!");
-      if (!full) return msg("Type something!");
       if (!words.has(full)) return msg("Not a word!");
       if (used.has(full)) return msg("Already used!");
       clearInterval(timerId);
