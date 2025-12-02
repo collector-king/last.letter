@@ -52,124 +52,80 @@
   </div>
 
   <script type="module">
-    import { Redis } from "https://cdn.jsdelivr.net/npm/@upstash/redis@1.35.7/+esm";
+    import { Redis } from "https://cdn.jsdelivr.net/npm/@upstash/redis@latest/+esm";
 
-    // Parse .env.local for Redis URL
-    let redis;
-    try {
-      const envText = await fetch('./.env.local').then(r => r.text());
-      const env = {};
-      envText.split('\n').forEach(line => {
-        const match = line.match(/^([^=]+)=(.*)$/);
-        if (match) env[match[1].trim()] = match[2].trim().replace(/^["']|["']$/g, '');
-      });
-      const redisUrl = env.Leaderboard_REDIS_URL;
-      if (!redisUrl) throw new Error('No Leaderboard_REDIS_URL in .env.local');
-      const url = new URL(redisUrl.replace('redis://', 'https://'));
-      redis = new Redis({
-        url: url.origin + url.pathname,
-        token: url.password,
-      });
-    } catch (e) {
-      console.error('Redis connection failed:', e);
-      document.getElementById('lb-list').innerHTML = '<div style="color:#c00;">Setup error - check .env.local</div>';
-    }
+    // Vercel injects environment variables via VITE_ prefix
+    const REDIS_URL = import.meta.env.VITE_REDIS_URL;
 
-    const KEY = "lastletter:global";
+    const url = new URL(REDIS_URL.replace('redis://', 'https://'));
+    const redis = new Redis({
+      url: url.origin + url.pathname,
+      token: url.password,
+    });
+
+    const KEY = "lastletter:global:v2";
 
     async function loadLB() {
-      if (!redis) return;
       try {
-        // Use zrange with negative end for reverse (highest first), withScores true
-        const entries = await redis.zrange(KEY, 0, -1, { withScores: true });
+        const data = await redis.zrange(KEY, 0, -1, { withScores: true });
         const list = document.getElementById("lb-list");
         list.innerHTML = "";
-        if (!entries || entries.length === 0) {
-          list.innerHTML = '<div style="color:#666;text-align:center;font-style:italic;">No scores yet — be the first!</div>';
+        if (!data?.length) {
+          list.innerHTML = '<div style="color:#666;font-style:italic;">No scores yet — be the first!</div>';
           return;
         }
-        // Sort by score descending
-        const scoredEntries = [];
-        for (let i = 0; i < entries.length; i += 2) {
-          scoredEntries.push({ name: entries[i], score: parseInt(entries[i + 1]) });
+        const entries = [];
+        for (let i = 0; i < data.length; i += 2) {
+          entries.push({ name: data[i], score: Number(data[i + 1]) });
         }
-        scoredEntries.sort((a, b) => b.score - a.score);
-        const top10 = scoredEntries.slice(0, 10);
-        top10.forEach((entry, idx) => {
+        entries.sort((a, b) => b.score - a.score);
+        entries.slice(0, 10).forEach((e, i) => {
           const li = document.createElement("li");
-          li.textContent = `${entry.name} — ${entry.score}${idx === 0 ? ' 👑' : ''}`;
-          if (idx === 0) li.style.color = "#0ff";
+          li.textContent = `${e.name} — ${e.score}${i===0?" Crown":""}`;
+          if (i===0) li.style.color = "#0ff";
           list.appendChild(li);
         });
       } catch (e) {
-        console.error(e);
         document.getElementById("lb-list").innerHTML = '<div style="color:#c00;">Leaderboard offline</div>';
       }
     }
 
     async function saveScore(name, score) {
-      if (!redis) return;
-      try {
-        await redis.zadd(KEY, { score, member: name.substring(0, 20) || 'Anonymous' });
-        loadLB();
-      } catch (e) {
-        console.error("Save failed:", e);
-      }
+      await redis.zadd(KEY, { score, member: name.substring(0,20) || "Anonymous" });
+      loadLB();
     }
 
     loadLB();
     setInterval(loadLB, 15000);
 
-    // ==================== GAME LOGIC ====================
-    const letterEl = document.getElementById('letter');
-    const typedEl = document.getElementById('typed');
-    const timerEl = document.getElementById('timer');
-    const msgEl = document.getElementById('msg');
+    // === GAME LOGIC (your original + cleaned up) ===
+    let words = new Set(), used = new Set(), currentLetter = "", typed = "", lastWord = "";
+    let lives = 3, streak = 0, timer = 10, timerId = null, playing = false;
 
-    let words = new Set();
-    let used = new Set();
-    let currentLetter = '';
-    let typed = '';
-    let lives = 3, streak = 0;
-    let timer = 10, timerId = null, playing = false;
-    let lastWord = '';
-
-    fetch('word.txt?' + Date.now())
+    fetch("word.txt?" + Date.now())
       .then(r => r.text())
-      .then(text => {
-        text.split('\n').forEach(w => {
-          const word = w.trim().toLowerCase();
-          if (word.length >= 2 && /^[a-z]+$/.test(word)) words.add(word);
-        });
-      });
+      .then(t => t.split("\n").forEach(w => {
+        const wd = w.trim().toLowerCase();
+        if (wd.length >= 2 && /^[a-z]+$/.test(wd)) words.add(wd);
+      }));
 
     function startGame() {
-      document.getElementById('start').style.display = 'none';
-      document.getElementById('game').style.display = 'flex';
+      document.getElementById("start").style.display = "none";
+      document.getElementById("game").style.display = "flex";
       lives = 3; streak = 0; used.clear();
-      updateHUD();
+      document.getElementById("hud").innerHTML = "♥♥♥ | STREAK <strong>0</strong>";
       newRound();
     }
 
-    function updateHUD() {
-      document.getElementById('hud').innerHTML = 
-        '♥'.repeat(lives) + '💔'.repeat(3 - lives) + ` | STREAK <strong>${streak}</strong>`;
-    }
-
     function newRound() {
-      typed = ''; typedEl.textContent = '';
-      if (streak === 0) {
-        letterEl.textContent = 'ANY →';
-        currentLetter = '';
-      } else {
-        currentLetter = lastWord.slice(-1);
-        letterEl.textContent = currentLetter.toUpperCase();
-      }
-      timer = 10; timerEl.textContent = '10'; timerEl.classList.remove('pulse');
+      typed = ""; document.getElementById("typed").textContent = "";
+      document.getElementById("letter").textContent = streak === 0 ? "ANY →" : (currentLetter = lastWord.slice(-1)).toUpperCase();
+      timer = 10; document.getElementById("timer").textContent = "10";
+      document.getElementById("timer").classList.remove("pulse");
       clearInterval(timerId);
       timerId = setInterval(() => {
-        timer--; timerEl.textContent = timer;
-        if (timer <= 3) timerEl.classList.add('pulse');
+        timer--; document.getElementById("timer").textContent = timer;
+        if (timer <= 3) document.getElementById("timer").classList.add("pulse");
         if (timer <= 0) die();
       }, 1000);
       playing = true;
@@ -177,30 +133,22 @@
 
     function submit() {
       if (!playing) return;
-      const rest = typed.toLowerCase();
-      if (rest.length === 0) return msg("Type something!");
-      const fullWord = currentLetter ? currentLetter + rest : rest;
-      if (!words.has(fullWord)) return msg("Not a word!");
-      if (used.has(fullWord)) return msg("Already used!");
-
-      clearInterval(timerId);
-      used.add(fullWord);
-      lastWord = fullWord;
-      streak++;
-      updateHUD();
+      const full = (currentLetter + typed.toLowerCase());
+      if (!full) return msg("Type something!");
+      if (!words.has(full)) return msg("Not a word!");
+      if (used.has(full)) return msg("Already used!");
+      clearInterval(timerId); used.add(full); lastWord = full; streak++;
+      document.getElementById("hud").innerHTML = "♥".repeat(lives)+"Broken Heart".repeat(3-lives)+` | STREAK <strong>${streak}</strong>`;
       setTimeout(newRound, 600);
     }
 
     async function die() {
-      clearInterval(timerId);
-      lives--;
-      updateHUD();
-
+      clearInterval(timerId); lives--;
+      document.getElementById("hud").innerHTML = "♥".repeat(lives)+"Broken Heart".repeat(3-lives)+` | STREAK <strong>${streak}</strong>`;
       if (lives === 0) {
         playing = false;
         if (streak >= 10) {
-          let name = prompt(`HIGH SCORE ${streak}!\nEnter your name:`) || 'Anonymous';
-          name = name.trim().substring(0, 20);
+          const name = prompt(`HIGH SCORE ${streak}!\nEnter your name:`, "Player")?.trim().substring(0,20) || "Anonymous";
           await saveScore(name, streak);
         }
         msg("GAME OVER");
@@ -211,23 +159,21 @@
       }
     }
 
-    function msg(text) {
-      msgEl.textContent = text;
-      msgEl.classList.add('show');
-      setTimeout(() => msgEl.classList.remove('show'), 1200);
+    function msg(t) {
+      const m = document.getElementById("msg");
+      m.textContent = t; m.classList.add("show");
+      setTimeout(() => m.classList.remove("show"), 1200);
     }
 
-    document.addEventListener('keydown', e => {
+    document.addEventListener("keydown", e => {
       if (!playing) return;
       if (/^[a-zA-Z]$/.test(e.key)) {
         typed += e.key.toLowerCase();
-        typedEl.textContent = typed.toUpperCase();
-      } else if (e.key === 'Backspace') {
-        typed = typed.slice(0, -1);
-        typedEl.textContent = typed.toUpperCase();
-      } else if (e.key === 'Enter') {
-        submit();
-      }
+        document.getElementById("typed").textContent = typed.toUpperCase();
+      } else if (e.key === "Backspace") {
+        typed = typed.slice(0,-1);
+        document.getElementById("typed").textContent = typed.toUpperCase();
+      } else if (e.key === "Enter") submit();
     });
   </script>
 </body>
