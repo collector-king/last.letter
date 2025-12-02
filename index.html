@@ -47,14 +47,15 @@
   </div>
 
   <div id="game">
-    <div id="hud">Hearts Hearts Hearts | STREAK <span id="streak">0</span></div>
+    <div id="hud">♥♥♥ | STREAK <span id="streak">0</span></div>
     <div id="word-line"><div id="letter"></div><div id="typed"></div></div>
     <div id="timer">10</div>
     <div id="msg"></div>
   </div>
 
-  <script src="https://unpkg.com/@upstash/redis@1.25.1/dist/index.js"></script>
-  <script>
+  <script type="module">
+    import { Redis } from 'https://cdn.skypack.dev/@upstash/redis';
+
     const letterEl = document.getElementById('letter');
     const typedEl = document.getElementById('typed');
     const timerEl = document.getElementById('timer');
@@ -62,7 +63,7 @@
     const lbList = document.getElementById('lb-list');
 
     // ==================== REDIS LEADERBOARD (UPSTASH) ====================
-    const redis = new UpstashRedis({
+    const redis = new Redis({
       url: "https://redis-18301.crce218.eu-central-1-1.ec2.cloud.redislabs.com",
       token: "y3afmOUqT7w15wBr48yDu1TOpnEKG8EX",
     });
@@ -82,7 +83,7 @@
           const name = raw[i];
           const score = parseInt(raw[i + 1]);
           const li = document.createElement('li');
-          li.textContent = `${name} — ${score}${i === 0 ? ' Crown' : ''}`;
+          li.textContent = `${name} — ${score}${i === 0 ? ' 👑' : ''}`;
           if (i === 0) li.style.color = '#0ff';
           lbList.appendChild(li);
         }
@@ -133,7 +134,7 @@
 
     function updateHUD() {
       document.getElementById('hud').innerHTML = 
-        'Hearts'.repeat(lives) + 'Broken Heart'.repeat(3-lives) + 
+        '♥'.repeat(lives) + '💔'.repeat(3-lives) + 
         ` | STREAK <strong>${streak}</strong>`;
     }
 
