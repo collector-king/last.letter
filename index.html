@@ -8,31 +8,43 @@
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..800&display=swap');
     *{margin:0;padding:0;box-sizing:border-box;}
     body{
-      height:100vh;color:#0f0;font-family:'JetBrains Mono',monospace;
+      height:100vh;font-family:'JetBrains Mono',monospace;
       display:flex;flex-direction:column;align-items:center;justify-content:center;
       user-select:none;overflow:hidden;position:relative;
       background-size:cover;background-position:center;background-repeat:no-repeat;
-      transition:all 0.8s ease;
+      transition:all 0.8s ease;color:#0f0;
     }
-    body::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,0.4);z-index:-1;}
+    body::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,0.45);z-index:-1;}
     h1{font-size:80px;text-shadow:0 0 40px currentColor;margin:30px;}
-    button{padding:20px 80px;font-size:40px;background:currentColor;color:#000;border:none;border-radius:20px;cursor:pointer;box-shadow:0 0 50px currentColor;transition:all .3s;}
-    button:hover{transform:scale(1.1);}
+    
+    /* PLAY BUTTON — ALWAYS NEON GREEN, NEVER BLACK */
+    #play-btn{
+      padding:20px 80px;font-size:40px;background:#0f0 !important;color:#000 !important;
+      border:none;border-radius:20px;cursor:pointer;box-shadow:0 0 60px #0f0;
+      transition:all .3s;font-weight:bold;z-index:10;position:relative;
+    }
+    #play-btn:hover{
+      transform:scale(1.12);box-shadow:0 0 90px #0ff;background:#0ff !important;
+    }
+
     #game{display:none;flex-direction:column;align-items:center;position:relative;z-index:1;}
-    #word-line{display:flex;align-items:center;justify-content:center;margin:80px 0 40px 0;padding:50px 100px;background:rgba(0,0,0,0.65);border-radius:50px;box-shadow:0 0 100px currentColor;backdrop-filter:blur(12px);border:3px solid currentColor;}
+    #word-line{display:flex;align-items:center;justify-content:center;margin:80px 0 40px 0;padding:50px 100-Мpx;background:rgba(0,0,0,0.65);border-radius:50px;box-shadow:0 0 100px currentColor;backdrop-filter:blur(12px);border:3px solid currentColor;}
     #letter{font-size:240px;color:#fff;text-shadow:0 0 80px currentColor;font-weight:800;}
     #typed{font-size:200px;color:currentColor;text-shadow:0 0 60px currentColor;margin-left:40px;font-weight:700;}
     #timer{font-size:70px;color:#f33;margin:20px;}
     #hud{position:absolute;top:20px;left:20px;font-size:24px;color:#fff;text-shadow:0 0 10px #000;z-index:10;}
-    #msg{position:fixed;bottom:100px;font-size:40px;color:#fff;background:rgba(0,0,0,0.8);padding:15px 50px 15px 40px;border-radius:20px;opacity:0;transition:all .4s;z-index:100;border:2px solid currentColor;display:flex;align-items:center;gap:20px;}
+    
+    #msg{position:fixed;bottom:100px;font-size:40px;color:#fff;background:rgba(0,0,0,0.85);padding:15px 50px 15px 40px;border-radius:20px;opacity:0;transition:all .4s;z-index:100;border:2px solid currentColor;display:flex;align-items:center;gap:20px;max-width:90%;}
     #msg.show{opacity:1;bottom:120px;}
     #msg-close{cursor:pointer;width:40px;height:40px;background:currentColor;color:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:24px;}
     #msg-close:hover{background:#fff;}
+
     #leaderboard{margin-top:50px;background:rgba(0,0,0,0.65);padding:30px 60px;border-radius:30px;border:3px solid currentColor;min-width:400px;box-shadow:0 0 60px currentColor;backdrop-filter:blur(12px);}
     #leaderboard h2{font-size:36px;text-align:center;margin-bottom:20px;color:currentColor;text-shadow:0 0 20px currentColor;}
     #leaderboard li::before{color:currentColor;}
     #leaderboard li:first-child{color:currentColor;font-weight:bold;}
     .upload-hint{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);font-size:20px;color:currentColor;background:rgba(0,0,0,0.6);padding:10px 30px;border-radius:20px;backdrop-filter:blur(8px);cursor:pointer;z-index:10;border:1px solid currentColor;}
+
     @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
     #timer.pulse{animation:pulse 0.4s infinite;color:#ff0088;}
   </style>
@@ -41,7 +53,7 @@
 
   <div id="start">
     <h1>LAST LETTER</h1>
-    <p style="font-size:28px;margin:20px;">You DON'T type the first letter — just the rest!</p>
+    <p style="font-size:28px;margin:20px;">Lets See if u are smarty</p>
     <button id="play-btn">PLAY</button>
 
     <div id="leaderboard">
@@ -49,7 +61,7 @@
       <ol id="lb-list"><div style="color:#888;">Loading...</div></ol>
     </div>
 
-    <div class="upload-hint">Click anywhere to upload background image</div>
+    <div class="upload-hint">Click anywhere to upload background</div>
   </div>
 
   <div id="game">
@@ -70,21 +82,21 @@
     });
     const KEY = "lastletter:global";
 
-    // === RESET TO DEFAULT ===
+    // Reset to default green theme
     function resetToDefault() {
-      document.body.style.background = "radial-gradient(circle at center, #00ff4088, #000000)";
+      document.body.style.background = "radial-gradient(circle at center, #00ff4088, #000)";
       document.body.style.backgroundImage = "";
       document.body.style.color = "#0f0";
       localStorage.removeItem('lastletter-bg');
-      location.reload();
+      setTimeout(() => location.reload(), 100);
     }
     document.getElementById('msg-close').addEventListener('click', () => {
       document.getElementById('msg').classList.remove('show');
       resetToDefault();
     });
 
-    // === COLOR DETECTION ===
-    function getDominantColor(url, cb) {
+    // Dominant color → complementary theme
+    function getDominantColor(url) {
       const img = new Image(); img.crossOrigin = "anonymous";
       img.onload = () => {
         const c = document.createElement('canvas');
@@ -97,14 +109,12 @@
         r=~~(r/n);g=~~(g/n);b=~~(b/n);
         const hsl = rgbToHsl(r,g,b);
         const comp = hslToRgb((hsl[0]+0.5)%1,0.85,0.55);
-        const color = `rgb(${comp[0]},${comp[1]},${comp[2]})`;
-        document.body.style.color = color;
-        cb?.();
+        document.body.style.color = `rgb(${comp[0]},${comp[1]},${comp[2]})`;
       };
-      img.src = url;
+      img.src = url + (url.includes('?')?'&':'?') + Date.now();
     }
     function rgbToHsl(r,g,b){r/=255;g/=255;b/=255;const max=Math.max(r,g,b),min=Math.min(r,g,b);let h,s,l=(max+min)/2;if(max===min)h=s=0;else{const d=max-min;s=l>0.5?d/(2-max-min):d/(max+min);switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break}h/=6;}return[h,s,l];}
-    function hslToRgb(h,s,l){let r,g,b;if(s===0)r=g=b=l;else{const hue2rgb=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<0.5)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;};const q=l<0.5?l*(1+s):l+s-l*s;const p=2*l-q;r=hue2rgb(p,q,h+1/3);g=hue2rgb(p,q,h);b=hue2rgb(p,q,h-1/3);}return[~~(r*255),~~(g*255),~~(b*255)];}
+    function hslToRgb(h,s,l){let r,g,b;if(s===0)r=g=b=l;else{const hue2rgb=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<0.5)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;};const q=l<0.5?l*(1+s):l+s-l*s;const p=2*l-q;r=hue2rgb(p,q,h+1/3);g=hue2rgb(p,q,h);b=hue2rgb(p,q,h-1/3);}return[~~(r*255),~~(g*255),~~(b*255)];};
 
     function applyBackground(url) {
       document.body.style.backgroundImage = `url(${url})`;
@@ -115,7 +125,7 @@
     if (saved) applyBackground(saved);
     else document.body.style.background = "radial-gradient(circle at center, #00ff4088, #000)";
 
-    document.getElementById('start').addEventListener('click', e => { if(e.target.closest('button')) return; document.getElementById('bg-upload').click(); });
+    document.getElementById('start').addEventListener('click', e => { if(e.target.closest('#play-btn')) return; document.getElementById('bg-upload').click(); });
     document.getElementById('bg-upload').addEventListener('change', e => {
       const f = e.target.files[0];
       if(f){const r=new FileReader();r.onload=ev=>applyBackground(ev.target.result);r.readAsDataURL(f);}
@@ -127,7 +137,7 @@
       setTimeout(()=>document.getElementById('msg').classList.remove('show'), 3000);
     }
 
-    // === LEADERBOARD ===
+    // Leaderboard
     async function loadLeaderboard() {
       try {
         const data = await redis.zrange(KEY, 0, 9, { rev: true, withScores: true });
@@ -147,7 +157,7 @@
     }
     loadLeaderboard(); setInterval(loadLeaderboard, 15000);
 
-    // === GAME LOGIC — NOW BLOCKS 2-LETTER SPAM ===
+    // Game logic — 4-letter minimum
     let words = new Set(), used = new Set(), currentLetter = "", typed = "", lastWord = "";
     let lives = 3, streak = 0, timer = 10, timerId = null, playing = false;
 
@@ -155,7 +165,7 @@
       .then(r => r.text())
       .then(t => t.split("\n").forEach(w => {
         const wd = w.trim().toLowerCase();
-        if (wd.length >= 4 && /^[a-z]+$/.test(wd)) words.add(wd);   // ← MINIMUM 4 LETTERS
+        if (wd.length >= 4 && /^[a-z]+$/.test(wd)) words.add(wd);
       }));
 
     document.getElementById("play-btn").addEventListener("click", () => {
@@ -183,12 +193,10 @@
     function submit() {
       if (!playing) return;
       const full = currentLetter + typed.toLowerCase();
-
-      if (typed.length < 3) return msg("Minimum 4 letters!");               // ← BLOCKS 2-letter spam
+      if (typed.length < 1) return msg("Nuh uh");
       if (!full) return msg("Type something!");
       if (!words.has(full)) return msg("Not a word!");
       if (used.has(full)) return msg("Already used!");
-
       clearInterval(timerId);
       used.add(full); lastWord = full; streak++;
       document.getElementById("hud").innerHTML = "Hearts".repeat(lives)+"Broken Heart".repeat(3-lives)+` | STREAK <strong>${streak}</strong>`;
