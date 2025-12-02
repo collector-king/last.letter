@@ -40,73 +40,92 @@
 
     <div id="leaderboard">
       <h2>GLOBAL LEADERBOARD</h2>
-      <ol id="lb-list">
-        <div style="color:#666;text-align:center;font-style:italic;">Loading...</div>
-      </ol>
+      <ol id="lb-list"><div style="color:#666;text-align:center;font-style:italic;">Loading...</div></ol>
     </div>
   </div>
 
   <div id="game">
-    <div id="hud">♥♥♥ | STREAK <span id="streak">0</span></div>
+    <div id="hud">♥♥♥ | STREAK <strong>0</strong></div>
     <div id="word-line"><div id="letter"></div><div id="typed"></div></div>
     <div id="timer">10</div>
     <div id="msg"></div>
   </div>
 
   <script type="module">
-    import { Redis } from 'https://cdn.skypack.dev/@upstash/redis';
+    import { Redis } from "https://cdn.jsdelivr.net/npm/@upstash/redis@1.35.7/+esm";
 
+    // Parse .env.local for Redis URL
+    let redis;
+    try {
+      const envText = await fetch('./.env.local').then(r => r.text());
+      const env = {};
+      envText.split('\n').forEach(line => {
+        const match = line.match(/^([^=]+)=(.*)$/);
+        if (match) env[match[1].trim()] = match[2].trim().replace(/^["']|["']$/g, '');
+      });
+      const redisUrl = env.Leaderboard_REDIS_URL;
+      if (!redisUrl) throw new Error('No Leaderboard_REDIS_URL in .env.local');
+      const url = new URL(redisUrl.replace('redis://', 'https://'));
+      redis = new Redis({
+        url: url.origin + url.pathname,
+        token: url.password,
+      });
+    } catch (e) {
+      console.error('Redis connection failed:', e);
+      document.getElementById('lb-list').innerHTML = '<div style="color:#c00;">Setup error - check .env.local</div>';
+    }
+
+    const KEY = "lastletter:global";
+
+    async function loadLB() {
+      if (!redis) return;
+      try {
+        // Use zrange with negative end for reverse (highest first), withScores true
+        const entries = await redis.zrange(KEY, 0, -1, { withScores: true });
+        const list = document.getElementById("lb-list");
+        list.innerHTML = "";
+        if (!entries || entries.length === 0) {
+          list.innerHTML = '<div style="color:#666;text-align:center;font-style:italic;">No scores yet — be the first!</div>';
+          return;
+        }
+        // Sort by score descending
+        const scoredEntries = [];
+        for (let i = 0; i < entries.length; i += 2) {
+          scoredEntries.push({ name: entries[i], score: parseInt(entries[i + 1]) });
+        }
+        scoredEntries.sort((a, b) => b.score - a.score);
+        const top10 = scoredEntries.slice(0, 10);
+        top10.forEach((entry, idx) => {
+          const li = document.createElement("li");
+          li.textContent = `${entry.name} — ${entry.score}${idx === 0 ? ' 👑' : ''}`;
+          if (idx === 0) li.style.color = "#0ff";
+          list.appendChild(li);
+        });
+      } catch (e) {
+        console.error(e);
+        document.getElementById("lb-list").innerHTML = '<div style="color:#c00;">Leaderboard offline</div>';
+      }
+    }
+
+    async function saveScore(name, score) {
+      if (!redis) return;
+      try {
+        await redis.zadd(KEY, { score, member: name.substring(0, 20) || 'Anonymous' });
+        loadLB();
+      } catch (e) {
+        console.error("Save failed:", e);
+      }
+    }
+
+    loadLB();
+    setInterval(loadLB, 15000);
+
+    // ==================== GAME LOGIC ====================
     const letterEl = document.getElementById('letter');
     const typedEl = document.getElementById('typed');
     const timerEl = document.getElementById('timer');
     const msgEl = document.getElementById('msg');
-    const lbList = document.getElementById('lb-list');
 
-    // ==================== REDIS LEADERBOARD (UPSTASH) ====================
-    const redis = new Redis({
-      url: "https://redis-18301.crce218.eu-central-1-1.ec2.cloud.redislabs.com",
-      token: "y3afmOUqT7w15wBr48yDu1TOpnEKG8EX",
-    });
-
-    const LEADERBOARD_KEY = "lastletter:leaderboard";
-
-    async function loadLeaderboard() {
-      try {
-        const raw = await redis.zrevrange(LEADERBOARD_KEY, 0, 9, { withScores: true });
-        lbList.innerHTML = '';
-        if (!raw || raw.length === 0) {
-          lbList.innerHTML = '<div style="color:#666;text-align:center;font-style:italic;">No scores yet — be the first!</div>';
-          return;
-        }
-
-        for (let i = 0; i < raw.length; i += 2) {
-          const name = raw[i];
-          const score = parseInt(raw[i + 1]);
-          const li = document.createElement('li');
-          li.textContent = `${name} — ${score}${i === 0 ? ' 👑' : ''}`;
-          if (i === 0) li.style.color = '#0ff';
-          lbList.appendChild(li);
-        }
-      } catch (err) {
-        console.error(err);
-        lbList.innerHTML = '<div style="color:#c00;">Leaderboard offline</div>';
-      }
-    }
-
-    async function submitScore(name, score) {
-      try {
-        await redis.zadd(LEADERBOARD_KEY, { score: score, member: name.substring(0, 20) });
-        await loadLeaderboard();
-      } catch (err) {
-        console.error("Failed to save score:", err);
-      }
-    }
-
-    // Load leaderboard on page load
-    loadLeaderboard();
-    setInterval(loadLeaderboard, 15000); // Refresh every 15s
-
-    // ==================== REST OF YOUR GAME (unchanged) ====================
     let words = new Set();
     let used = new Set();
     let currentLetter = '';
@@ -134,8 +153,7 @@
 
     function updateHUD() {
       document.getElementById('hud').innerHTML = 
-        '♥'.repeat(lives) + '💔'.repeat(3-lives) + 
-        ` | STREAK <strong>${streak}</strong>`;
+        '♥'.repeat(lives) + '💔'.repeat(3 - lives) + ` | STREAK <strong>${streak}</strong>`;
     }
 
     function newRound() {
@@ -147,8 +165,7 @@
         currentLetter = lastWord.slice(-1);
         letterEl.textContent = currentLetter.toUpperCase();
       }
-      timer = 10; timerEl.textContent = '10';
-      timerEl.classList.remove('pulse');
+      timer = 10; timerEl.textContent = '10'; timerEl.classList.remove('pulse');
       clearInterval(timerId);
       timerId = setInterval(() => {
         timer--; timerEl.textContent = timer;
@@ -162,7 +179,6 @@
       if (!playing) return;
       const rest = typed.toLowerCase();
       if (rest.length === 0) return msg("Type something!");
-
       const fullWord = currentLetter ? currentLetter + rest : rest;
       if (!words.has(fullWord)) return msg("Not a word!");
       if (used.has(fullWord)) return msg("Already used!");
@@ -182,16 +198,11 @@
 
       if (lives === 0) {
         playing = false;
-
-        if (streak >= 10) {  // Only save real high scores
-          let name = '';
-          while (!name || name.trim().length === 0) {
-            name = prompt(`HIGH SCORE ${streak}!\nEnter your name:`, "Player") || '';
-          }
-          name = name.trim().substring(0, 20) || "Anonymous";
-          await submitScore(name, streak);
+        if (streak >= 10) {
+          let name = prompt(`HIGH SCORE ${streak}!\nEnter your name:`) || 'Anonymous';
+          name = name.trim().substring(0, 20);
+          await saveScore(name, streak);
         }
-
         msg("GAME OVER");
         setTimeout(() => location.reload(), 3000);
       } else {
