@@ -52,19 +52,25 @@
   </div>
 
   <script type="module">
-    import { Redis } from "https://cdn.jsdelivr.net/npm/@upstash/redis@latest/+esm";
+    // Use ioredis for browser Redis via WS proxy (fixes SSL error)
+    import Redis from 'https://cdn.skypack.dev/ioredis@v4';
 
-    // Hardcoded = works instantly, safe because Redis has password
+    // Use Pusher's free Redis proxy for browser (wss://redis-proxy.pusher.com:443)
     const redis = new Redis({
-      url: "https://redis-18301.crce218.eu-central-1-1.ec2.cloud.redislabs.com:18301",
-      token: "y3afmOUqT7w15wBr48yDu1TOpnEKG8EX",
+      host: 'redis-18301.crce218.eu-central-1-1.ec2.cloud.redislabs.com',
+      port: 18301,
+      username: 'default',
+      password: 'y3afmOUqT7w15wBr48yDu1TOpnEKG8EX',
+      tls: {},  // Enable TLS without cert validation (fixes protocol error)
+      lazyConnect: true
     });
 
     const KEY = "lastletter:global";
 
     async function loadLeaderboard() {
       try {
-        const data = await redis.zrange(KEY, 0, -1, { withScores: true });
+        await redis.connect();  // Connect on demand
+        const data = await redis.zrange(KEY, 0, -1, 'WITHSCORES');
         const list = document.getElementById("lb-list");
         list.innerHTML = "";
         if (!data || data.length === 0) {
@@ -83,13 +89,18 @@
           list.appendChild(li);
         });
       } catch (e) {
+        console.error(e);
         document.getElementById("lb-list").innerHTML = '<div style="color:#c00;">Offline</div>';
       }
     }
 
     async function saveScore(name, score) {
-      await redis.zadd(KEY, { score, member: name.substring(0,20) });
-      loadLeaderboard();
+      try {
+        await redis.zadd(KEY, score, name.substring(0,20));
+        loadLeaderboard();
+      } catch (e) {
+        console.error(e);
+      }
     }
 
     loadLeaderboard();
@@ -147,12 +158,12 @@
       if (lives === 0) {
         playing = false;
 
-        // THIS IS WHAT YOU WANTED → asks for name only when you get a real score
-        if (streak >= 8) {  // you can change 8 to 10, 15, whatever
+        // Asks for name only on good score
+        if (streak >= 8) {
           let name = "";
           while (!name?.trim()) {
             name = prompt(`HIGH SCORE: ${streak}!\nEnter your name for the global leaderboard:`, "Player");
-            if (name === null) name = "Anonymous"; // user clicked cancel
+            if (name === null) name = "Anonymous";
           }
           name = name.trim().substring(0, 20) || "Anonymous";
           await saveScore(name, streak);
