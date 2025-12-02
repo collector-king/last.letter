@@ -54,8 +54,8 @@
   <script type="module">
     import { Redis } from "https://cdn.jsdelivr.net/npm/@upstash/redis@latest/+esm";
 
-    // Vercel injects environment variables via VITE_ prefix
-    const REDIS_URL = import.meta.env.VITE_REDIS_URL;
+    // This line is replaced by Vercel with your real secret
+    const REDIS_URL = "REPLACE_ME_WITH_YOUR_REDIS_URL";
 
     const url = new URL(REDIS_URL.replace('redis://', 'https://'));
     const redis = new Redis({
@@ -63,7 +63,7 @@
       token: url.password,
     });
 
-    const KEY = "lastletter:global:v2";
+    const KEY = "lastletter:global";
 
     async function loadLB() {
       try {
@@ -75,9 +75,7 @@
           return;
         }
         const entries = [];
-        for (let i = 0; i < data.length; i += 2) {
-          entries.push({ name: data[i], score: Number(data[i + 1]) });
-        }
+        for (let i = 0; i < data.length; i += 2) entries.push({ name: data[i], score: Number(data[i+1]) });
         entries.sort((a, b) => b.score - a.score);
         entries.slice(0, 10).forEach((e, i) => {
           const li = document.createElement("li");
@@ -98,82 +96,25 @@
     loadLB();
     setInterval(loadLB, 15000);
 
-    // === GAME LOGIC (your original + cleaned up) ===
+    // === GAME CODE (same as before) ===
     let words = new Set(), used = new Set(), currentLetter = "", typed = "", lastWord = "";
     let lives = 3, streak = 0, timer = 10, timerId = null, playing = false;
 
-    fetch("word.txt?" + Date.now())
-      .then(r => r.text())
-      .then(t => t.split("\n").forEach(w => {
-        const wd = w.trim().toLowerCase();
-        if (wd.length >= 2 && /^[a-z]+$/.test(wd)) words.add(wd);
-      }));
+    fetch("word.txt?" + Date.now()).then(r => r.text()).then(t =>
+      t.split("\n").forEach(w => { const wd = w.trim().toLowerCase(); if (wd.length >= 2 && /^[a-z]+$/.test(wd)) words.add(wd); })
+    );
 
-    function startGame() {
-      document.getElementById("start").style.display = "none";
-      document.getElementById("game").style.display = "flex";
-      lives = 3; streak = 0; used.clear();
-      document.getElementById("hud").innerHTML = "♥♥♥ | STREAK <strong>0</strong>";
-      newRound();
-    }
-
-    function newRound() {
-      typed = ""; document.getElementById("typed").textContent = "";
-      document.getElementById("letter").textContent = streak === 0 ? "ANY →" : (currentLetter = lastWord.slice(-1)).toUpperCase();
-      timer = 10; document.getElementById("timer").textContent = "10";
-      document.getElementById("timer").classList.remove("pulse");
-      clearInterval(timerId);
-      timerId = setInterval(() => {
-        timer--; document.getElementById("timer").textContent = timer;
-        if (timer <= 3) document.getElementById("timer").classList.add("pulse");
-        if (timer <= 0) die();
-      }, 1000);
-      playing = true;
-    }
-
-    function submit() {
-      if (!playing) return;
-      const full = (currentLetter + typed.toLowerCase());
-      if (!full) return msg("Type something!");
-      if (!words.has(full)) return msg("Not a word!");
-      if (used.has(full)) return msg("Already used!");
-      clearInterval(timerId); used.add(full); lastWord = full; streak++;
-      document.getElementById("hud").innerHTML = "♥".repeat(lives)+"Broken Heart".repeat(3-lives)+` | STREAK <strong>${streak}</strong>`;
-      setTimeout(newRound, 600);
-    }
-
-    async function die() {
-      clearInterval(timerId); lives--;
-      document.getElementById("hud").innerHTML = "♥".repeat(lives)+"Broken Heart".repeat(3-lives)+` | STREAK <strong>${streak}</strong>`;
-      if (lives === 0) {
-        playing = false;
-        if (streak >= 10) {
-          const name = prompt(`HIGH SCORE ${streak}!\nEnter your name:`, "Player")?.trim().substring(0,20) || "Anonymous";
-          await saveScore(name, streak);
-        }
-        msg("GAME OVER");
-        setTimeout(() => location.reload(), 3000);
-      } else {
-        msg("Time out!");
-        setTimeout(newRound, 1200);
-      }
-    }
-
-    function msg(t) {
-      const m = document.getElementById("msg");
-      m.textContent = t; m.classList.add("show");
-      setTimeout(() => m.classList.remove("show"), 1200);
-    }
+    function startGame() { document.getElementById("start").style.display = "none"; document.getElementById("game").style.display = "flex"; lives = 3; streak = 0; used.clear(); document.getElementById("hud").innerHTML = "♥♥♥ | STREAK <strong>0</strong>"; newRound(); }
+    function newRound() { typed = ""; document.getElementById("typed").textContent = ""; document.getElementById("letter").textContent = streak === 0 ? "ANY →" : (currentLetter = lastWord.slice(-1)).toUpperCase(); timer = 10; document.getElementById("timer").textContent = "10"; document.getElementById("timer").classList.remove("pulse"); clearInterval(timerId); timerId = setInterval(() => { timer--; document.getElementById("timer").textContent = timer; if (timer <= 3) document.getElementById("timer").classList.add("pulse"); if (timer <= 0) die(); }, 1000); playing = true; }
+    function submit() { if (!playing) return; const full = (currentLetter + typed.toLowerCase()); if (!full) return msg("Type something!"); if (!words.has(full)) return msg("Not a word!"); if (used.has(full)) return msg("Already used!"); clearInterval(timerId); used.add(full); lastWord = full; streak++; document.getElementById("hud").innerHTML = "♥".repeat(lives)+"Broken Heart".repeat(3-lives)+` | STREAK <strong>${streak}</strong>`; setTimeout(newRound, 600); }
+    async function die() { clearInterval(timerId); lives--; document.getElementById("hud").innerHTML = "♥".repeat(lives)+"Broken Heart".repeat(3-lives)+` | STREAK <strong>${streak}</strong>`; if (lives === 0) { playing = false; if (streak >= 10) { const name = prompt(`HIGH SCORE ${streak}!\nEnter your name:`, "Player")?.trim().substring(0,20) || "Anonymous"; await saveScore(name, streak); } msg("GAME OVER"); setTimeout(() => location.reload(), 3000); } else { msg("Time out!"); setTimeout(newRound, 1200); } }
+    function msg(t) { const m = document.getElementById("msg"); m.textContent = t; m.classList.add("show"); setTimeout(() => m.classList.remove("show"), 1200); }
 
     document.addEventListener("keydown", e => {
       if (!playing) return;
-      if (/^[a-zA-Z]$/.test(e.key)) {
-        typed += e.key.toLowerCase();
-        document.getElementById("typed").textContent = typed.toUpperCase();
-      } else if (e.key === "Backspace") {
-        typed = typed.slice(0,-1);
-        document.getElementById("typed").textContent = typed.toUpperCase();
-      } else if (e.key === "Enter") submit();
+      if (/^[a-zA-Z]$/.test(e.key)) { typed += e.key.toLowerCase(); document.getElementById("typed").textContent = typed.toUpperCase(); }
+      else if (e.key === "Backspace") { typed = typed.slice(0,-1); document.getElementById("typed").textContent = typed.toUpperCase(); }
+      else if (e.key === "Enter") submit();
     });
   </script>
 </body>
