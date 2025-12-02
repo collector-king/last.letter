@@ -7,26 +7,40 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..800&display=swap');
     *{margin:0;padding:0;box-sizing:border-box;}
-    body{height:100vh;background:#000;color:#0f0;font-family:'JetBrains Mono',monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;user-select:none;overflow:hidden;}
+    body{
+      height:100vh;background:#000;color:#0f0;font-family:'JetBrains Mono',monospace;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      user-select:none;overflow:hidden;position:relative;
+      background-size:cover;background-position:center;background-repeat:no-repeat;
+      transition:background 0.6s ease;
+    }
+    /* Default fallback background */
+    body::before{
+      content:"";position:absolute;inset:0;background:radial-gradient(circle at center,#00ff0022,#000);
+      z-index:-2;opacity:0.6;
+    }
     h1{font-size:80px;color:#0f0;text-shadow:0 0 40px #0f0;margin:30px;}
-    button{padding:20px 80px;font-size:40px;background:#0f0;color:#000;border:none;border-radius:20px;cursor:pointer;box-shadow:0 0 50px #0f0;}
-    button:hover{transform:scale(1.1);}
-    #game{display:none;flex-direction:column;align-items:center;}
-    #word-line{display:flex;align-items:center;justify-content:center;margin:80px 0 40px 0;padding:50px 100px;background:#000;border-radius:50px;box-shadow:0 0 100px rgba(255,255,255,0.15), inset 0 0 100px rgba(0,0,0,0.8);position:relative;overflow:hidden;border:2px solid #333;}
-    #word-line::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#000,#222,#444,#666,#444,#222,#000);background-size:300% 300%;animation:g 15s ease infinite;opacity:0.8;z-index:1;}
-    #letter{font-size:240px;color:#fff;text-shadow:0 0 80px #aaa;position:relative;z-index:2;font-weight:800;}
-    #typed{font-size:200px;color:#ccc;text-shadow:0 0 60px #888;margin-left:40px;position:relative;z-index:2;font-weight:700;}
+    button{padding:20px 80px;font-size:40px;background:#0f0;color:#000;border:none;border-radius:20px;cursor:pointer;box-shadow:0 0 50px #0f0;transition:all .3s;}
+    button:hover{transform:scale(1.1);box-shadow:0 0 80px #0ff;}
+    #game{display:none;flex-direction:column;align-items:center;position:relative;z-index:1;}
+    #word-line{display:flex;align-items:center;justify-content:center;margin:80px 0 40px 0;padding:50px 100px;background:rgba(0,0,0,0.7);border-radius:50px;box-shadow:0 0 100px rgba(0,255,0,0.3);backdrop-filter:blur(10px);border:2px solid #0f0;}
+    #letter{font-size:240px;color:#fff;text-shadow:0 0 80px #0f0;font-weight:800;}
+    #typed{font-size:200px;color:#0ff;text-shadow:0 0 60px #0ff;margin-left:40px;font-weight:700;}
     #timer{font-size:70px;color:#f33;margin:20px;}
-    #hud{position:absolute;top:20px;left:20px;font-size:24px;color:#fff;}
-    #msg{position:fixed;bottom:100px;font-size:40px;color:#f66;background:rgba(0,0,0,0.7);padding:15px 40px;border-radius:20px;opacity:0;transition:all .4s;}
+    #hud{position:absolute;top:20px;left:20px;font-size:24px;color:#fff;text-shadow:0 0 10px #000;z-index:10;}
+    #msg{position:fixed;bottom:100px;font-size:40px;color:#f66;background:rgba(0,0,0,0.8);padding:15px 40px;border-radius:20px;opacity:0;transition:all .4s;z-index:100;}
     #msg.show{opacity:1;bottom:120px;}
-    #leaderboard{margin-top:50px;background:#111;padding:30px 60px;border-radius:30px;border:2px solid #333;min-width:400px;box-shadow:0 0 60px rgba(255,255,255,0.1);}
+    #leaderboard{margin-top:50px;background:rgba(0,0,0,0.7);padding:30px 60px;border-radius:30px;border:2px solid #0f0;min-width:400px;box-shadow:0 0 60px rgba(0,255,0,0.3);backdrop-filter:blur(10px);}
     #leaderboard h2{font-size:36px;text-align:center;margin-bottom:20px;color:#0ff;text-shadow:0 0 20px #0ff;}
     #leaderboard ol{list-style:none;counter-reset:lb;font-size:28px;}
     #leaderboard li{counter-increment:lb;margin:12px 0;color:#ccc;}
     #leaderboard li::before{content:counter(lb) ". ";color:#0f0;font-weight:bold;margin-right:15px;}
     #leaderboard li:first-child{color:#0ff;font-weight:bold;}
-    @keyframes g{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+    .upload-hint{
+      position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+      font-size:20px;color:#0f8;background:rgba(0,0,0,0.6);padding:10px 30px;border-radius:20px;
+      backdrop-filter:blur(8px);cursor:pointer;z-index:10;
+    }
     @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
     #timer.pulse{animation:pulse 0.4s infinite}
   </style>
@@ -42,6 +56,8 @@
       <h2>GLOBAL LEADERBOARD</h2>
       <ol id="lb-list"><div style="color:#666;">Loading...</div></ol>
     </div>
+
+    <div class="upload-hint">Click anywhere to change background image</div>
   </div>
 
   <div id="game">
@@ -51,10 +67,12 @@
     <div id="msg"></div>
   </div>
 
+  <input type="file" id="bg-upload" accept="image/*" style="display:none">
+
   <script type="module">
     import { Redis } from "https://cdn.jsdelivr.net/npm/@upstash/redis@1/+esm";
 
-    // YOUR UPSTASH CREDENTIALS — WORKS 100%
+    // YOUR UPSTASH (already working!)
     const redis = new Redis({
       url: "https://exact-dory-25530.upstash.io",
       token: "AWO6AAIncDIyYmE4OTI5ODI3NDA0NzVmOWJlNDJiYWNkZjA2YjQ0NHAyMjU1MzA",
@@ -62,6 +80,37 @@
 
     const KEY = "lastletter:global";
 
+    // === BACKGROUND IMAGE UPLOAD & PERSISTENCE ===
+    const body = document.body;
+    const uploadHint = document.querySelector('.upload-hint');
+
+    function setBackground(url) {
+      body.style.backgroundImage = `url(${url})`;
+      localStorage.setItem('lastletter-bg', url);
+      uploadHint.textContent = "Background changed! Click again to change.";
+      setTimeout(() => uploadHint.textContent = "Click anywhere to change background image", 2000);
+    }
+
+    // Load saved background
+    const savedBg = localStorage.getItem('lastletter-bg');
+    if (savedBg) setBackground(savedBg);
+
+    // Click anywhere on start screen to upload
+    document.getElementById('start').addEventListener('click', (e) => {
+      if (e.target.tagName === 'BUTTON') return;
+      document.getElementById('bg-upload').click();
+    });
+
+    document.getElementById('bg-upload').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (ev) => setBackground(ev.target.result);
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // === LEADERBOARD ===
     async function loadLeaderboard() {
       try {
         const data = await redis.zrange(KEY, 0, 9, { rev: true, withScores: true });
@@ -90,7 +139,7 @@
     loadLeaderboard();
     setInterval(loadLeaderboard, 15000);
 
-    // ==================== GAME LOGIC ====================
+    // === GAME LOGIC (unchanged + polished) ===
     let words = new Set(), used = new Set(), currentLetter = "", typed = "", lastWord = "";
     let lives = 3, streak = 0, timer = 10, timerId = null, playing = false;
 
@@ -129,8 +178,7 @@
       if (!full) return msg("Type something!");
       if (!words.has(full)) return msg("Not a word!");
       if (used.has(full)) return msg("Already used!");
-      clearInterval(timerId);
-      used.add(full); lastWord = full; streak++;
+      clearInterval(timerId); used.add(full); lastWord = full; streak++;
       document.getElementById("hud").innerHTML = "Hearts".repeat(lives)+"Broken Heart".repeat(3-lives)+` | STREAK <strong>${streak}</strong>`;
       setTimeout(newRound, 600);
     }
