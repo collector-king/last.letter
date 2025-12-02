@@ -19,20 +19,33 @@
     }
     h1{font-size:80px;text-shadow:0 0 40px currentColor;margin:30px;}
     button{padding:20px 80px;font-size:40px;background:currentColor;color:#000;border:none;border-radius:20px;cursor:pointer;box-shadow:0 0 50px currentColor;transition:all .3s;}
-    button:hover{transform:scale(1.1);box-shadow:0 0 80px currentColor;}
+    button:hover{transform:scale(1.1);}
     #game{display:none;flex-direction:column;align-items:center;position:relative;z-index:1;}
     #word-line{display:flex;align-items:center;justify-content:center;margin:80px 0 40px 0;padding:50px 100px;background:rgba(0,0,0,0.65);border-radius:50px;box-shadow:0 0 100px currentColor;backdrop-filter:blur(12px);border:3px solid currentColor;}
     #letter{font-size:240px;color:#fff;text-shadow:0 0 80px currentColor;font-weight:800;}
     #typed{font-size:200px;color:currentColor;text-shadow:0 0 60px currentColor;margin-left:40px;font-weight:700;}
     #timer{font-size:70px;color:#f33;margin:20px;}
     #hud{position:absolute;top:20px;left:20px;font-size:24px;color:#fff;text-shadow:0 0 10px #000;z-index:10;}
-    #msg{position:fixed;bottom:100px;font-size:40px;color:#fff;background:rgba(0,0,0,0.8);padding:15px 40px;border-radius:20px;opacity:0;transition:all .4s;z-index:100;border:2px solid currentColor;}
+    
+    /* MESSAGE WITH X BUTTON */
+    #msg{
+      position:fixed;bottom:100px;font-size:40px;color:#fff;
+      background:rgba(0,0,0,0.8);padding:15px 50px 15px 40px;border-radius:20px;
+      opacity:0;transition:all .4s;z-index:100;border:2px solid currentColor;
+      display:flex;align-items:center;gap:20px;max-width:90%;
+    }
     #msg.show{opacity:1;bottom:120px;}
+    #msg-text{flex:1;}
+    #msg-close{
+      cursor:pointer;width:40px;height:40px;background:currentColor;color:#000;
+      border-radius:50%;display:flex;align-items:center;justify-content:center;
+      font-weight:bold;font-size:24px;user-select:none;
+    }
+    #msg-close:hover{background:#fff;}
+
     #leaderboard{margin-top:50px;background:rgba(0,0,0,0.65);padding:30px 60px;border-radius:30px;border:3px solid currentColor;min-width:400px;box-shadow:0 0 60px currentColor;backdrop-filter:blur(12px);}
     #leaderboard h2{font-size:36px;text-align:center;margin-bottom:20px;color:currentColor;text-shadow:0 0 20px currentColor;}
-    #leaderboard ol{list-style:none;counter-reset:lb;font-size:28px;}
-    #leaderboard li{counter-increment:lb;margin:12px 0;color:#ddd;}
-    #leaderboard li::before{content:counter(lb) ". ";color:currentColor;font-weight:bold;margin-right:15px;}
+    #leaderboard li::before{color:currentColor;}
     #leaderboard li:first-child{color:currentColor;font-weight:bold;}
     .upload-hint{
       position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
@@ -62,7 +75,12 @@
     <div id="hud">Hearts Hearts Hearts | STREAK <strong>0</strong></div>
     <div id="word-line"><div id="letter"></div><div id="typed"></div></div>
     <div id="timer">10</div>
-    <div id="msg"></div>
+    
+    <!-- MESSAGE WITH X BUTTON -->
+    <div id="msg">
+      <div id="msg-text"></div>
+      <div id="msg-close">X</div>
+    </div>
   </div>
 
   <input type="file" id="bg-upload" accept="image/*" style="display:none">
@@ -74,129 +92,86 @@
       url: "https://exact-dory-25530.upstash.io",
       token: "AWO6AAIncDIyYmE4OTI5ODI3NDA0NzVmOWJlNDJiYWNkZjA2YjQ0NHAyMjU1MzA",
     });
-
     const KEY = "lastletter:global";
 
-    // === COLOR MAGIC: Detect dominant color → use opposite ===
+    // === RESET TO DEFAULT (GREEN + DEFAULT BG) ===
+    function resetToDefault() {
+      document.body.style.background = "radial-gradient(circle at center, #00ff4088, #000000)";
+      document.body.style.backgroundImage = "";
+      document.body.style.color = "#0f0";
+      localStorage.removeItem('lastletter-bg');
+      location.reload(); // simplest way to refresh all colors
+    }
+
+    // === COLOR DETECTION & APPLY ===
     function getDominantColor(imageUrl, callback) {
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = img.width; canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
-
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-        let r = 0, g = 0, b = 0, count = 0;
-
-        // Sample every 20th pixel for speed
-        for (let i = 0; i < imageData.length; i += 80) {
-          r += imageData[i];
-          g += imageData[i+1];
-          b += imageData[i+2];
-          count++;
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        let r=0,g=0,b=0,count=0;
+        for (let i = 0; i < data.length; i += 80) {
+          r += data[i]; g += data[i+1]; b += data[i+2]; count++;
         }
-
-        r = ~~(r/count); g = ~~(g/count); b = ~~(b/count);
-
-        // Convert to HSL, invert hue → perfect complementary color
-        const hsl = rgbToHsl(r, g, b);
-        const oppositeHue = (hsl[0] + 0.5) % 1;
-        const complementary = hslToRgb(oppositeHue, 0.85, 0.55);
-
-        const color = `rgb(${complementary[0]}, ${complementary[1]}, ${complementary[2]})`;
-        document.documentElement.style.setProperty('--theme-color', color);
+        r=~~(r/count); g=~~(g/count); b=~~(b/count);
+        const hsl = rgbToHsl(r,g,b);
+        const comp = hslToRgb((hsl[0]+0.5)%1, 0.85, 0.55);
+        const color = `rgb(${comp[0]},${comp[1]},${comp[2]})`;
         document.body.style.color = color;
         callback(color);
       };
       img.src = imageUrl;
     }
-
-    function rgbToHsl(r, g, b) {
-      r /= 255; g /= 255; b /= 255;
-      const max = Math.max(r, g, b), min = Math.min(r, g, b);
-      let h, s, l = (max + min) / 2;
-      if (max === min) h = s = 0;
-      else {
-        const d = max - min;
-        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-        switch (max) {
-          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-          case g: h = (b - r) / d + 2; break;
-          case b: h = (r - g) / d + 4; break;
-        }
-        h /= 6;
-      }
-      return [h, s, l];
-    }
-
-    function hslToRgb(h, s, l) {
-      let r, g, b;
-      if (s === 0) r = g = b = l;
-      else {
-        const hue2rgb = (p, q, t) => {
-          if (t < 0) t += 1;
-          if (t > 1) t -= 1;
-          if (t < 1/6) return p + (q - p) * 6 * t;
-          if (t < 1/2) return q;
-          if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-          return p;
-        };
-        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-        const p = 2 * l - q;
-        r = hue2rgb(p, q, h + 1/3);
-        g = hue2rgb(p, q, h);
-        b = hue2rgb(p, q, h - 1/3);
-      }
-      return [~~(r * 255), ~~(g * 255), ~~(b * 255)];
-    }
-
-    // === BACKGROUND UPLOAD + AUTO COLOR ===
-    const body = document.body;
+    function rgbToHsl(r,g,b){r/=255;g/=255;b/=255;const max=Math.max(r,g,b),min=Math.min(r,g,b);let h,s,l=(max+min)/2;if(max===min)h=s=0;else{const d=max-min;s=l>0.5?d/(2-max-min):d/(max+min);switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break}h/=6;}return[h,s,l];}
+    function hslToRgb(h,s,l){let r,g,b;if(s===0)r=g=b=l;else{const hue2rgb=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<0.5)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;};const q=l<0.5?l*(1+s):l+s-l*s;const p=2*l-q;r=hue2rgb(p,q,h+1/3);g=hue2rgb(p,q,h);b=hue2rgb(p,q,h-1/3);}return[~~(r*255),~~(g*255),~~(b*255)];}
 
     function applyBackground(url) {
-      body.style.backgroundImage = `url(${url})`;
+      document.body.style.backgroundImage = `url(${url})`;
       localStorage.setItem('lastletter-bg', url);
-      getDominantColor(url, (color) => {
-        document.body.style.color = color;
-        document.querySelectorAll('button, #word-line, #leaderboard, .upload-hint, #msg').forEach(el => {
-          el.style.borderColor = color;
-          el.style.boxShadow = `0 0 60px ${color}40`;
-        });
-      });
+      getDominantColor(url, () => {});
     }
-
-    // Load saved background + color
     const saved = localStorage.getItem('lastletter-bg');
     if (saved) applyBackground(saved);
-    else body.style.background = "radial-gradient(circle at center, #00ff4088, #000)";
+    else document.body.style.background = "radial-gradient(circle at center, #00ff4088, #000)";
 
-    document.getElementById('start').addEventListener('click', (e) => {
+    document.getElementById('start').addEventListener('click', e => {
       if (e.target.closest('button')) return;
       document.getElementById('bg-upload').click();
     });
-
-    document.getElementById('bg-upload').addEventListener('change', (e) => {
+    document.getElementById('bg-upload').addEventListener('change', e => {
       const file = e.target.files[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (ev) => applyBackground(ev.target.result);
+        reader.onload = ev => applyBackground(ev.target.result);
         reader.readAsDataURL(file);
       }
     });
 
-    // === LEADERBOARD & GAME (same as before, now auto-colored) ===
+    // === X BUTTON → RESET TO DEFAULT ===
+    document.getElementById('msg-close').addEventListener('click', () => {
+      document.getElementById('msg').classList.remove('show');
+      resetToDefault();
+    });
+
+    // === MESSAGE FUNCTION ===
+    function msg(t) {
+      const m = document.getElementById('msg');
+      document.getElementById('msg-text').textContent = t;
+      m.classList.add('show');
+      setTimeout(() => m.classList.remove('show'), 3000);
+    }
+
+    // === LEADERBOARD & GAME (unchanged) ===
     async function loadLeaderboard() {
       try {
         const data = await redis.zrange(KEY, 0, 9, { rev: true, withScores: true });
         const list = document.getElementById("lb-list");
         list.innerHTML = "";
-        if (!data.length) {
-          list.innerHTML = '<div style="color:#888;font-style:italic;">No scores yet — be the first!</div>';
-          return;
-        }
+        if (!data.length) { list.innerHTML = '<div style="color:#888;font-style:italic;">No scores yet — be the first!</div>'; return; }
         for (let i = 0; i < data.length; i += 2) {
           const li = document.createElement("li");
           li.textContent = `${data[i]} — ${data[i+1]}${i===0?" Crown":""}`;
@@ -207,16 +182,12 @@
         document.getElementById("lb-list").innerHTML = '<div style="color:#c00;">Offline</div>';
       }
     }
-
     async function saveScore(name, score) {
       await redis.zadd(KEY, { score, member: name.substring(0,20) || "Anonymous" });
       loadLeaderboard();
     }
+    loadLeaderboard(); setInterval(loadLeaderboard, 15000);
 
-    loadLeaderboard();
-    setInterval(loadLeaderboard, 15000);
-
-    // GAME LOGIC (unchanged)
     let words = new Set(), used = new Set(), currentLetter = "", typed = "", lastWord = "";
     let lives = 3, streak = 0, timer = 10, timerId = null, playing = false;
 
@@ -263,7 +234,6 @@
     async function die() {
       clearInterval(timerId); lives--;
       document.getElementById("hud").innerHTML = "Hearts".repeat(lives)+"Broken Heart".repeat(3-lives)+` | STREAK <strong>${streak}</strong>`;
-
       if (lives === 0) {
         playing = false;
         if (streak >= 10) {
@@ -281,12 +251,6 @@
         msg("Time out!");
         setTimeout(newRound, 1200);
       }
-    }
-
-    function msg(t) {
-      const m = document.getElementById("msg");
-      m.textContent = t; m.classList.add("show");
-      setTimeout(() => m.classList.remove("show"), 1200);
     }
 
     document.addEventListener("keydown", e => {
