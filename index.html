@@ -16,17 +16,13 @@
     }
     body::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,0.45);z-index:-1;}
     h1{font-size:80px;text-shadow:0 0 40px currentColor;margin:30px;}
-    
-    /* Buttons — always visible and glowing */
     .btn{
       padding:18px 60px;font-size:36px;margin:15px;
       background:#0f0 !important;color:#000 !important;
       border:none;border-radius:20px;cursor:pointer;
       box-shadow:0 0 60px #0f0;transition:all .3s;font-weight:bold;
     }
-    .btn:hover{
-      transform:scale(1.12);box-shadow:0 0 90px #0ff;background:#0ff !important;
-    }
+    .btn:hover{transform:scale(1.12);box-shadow:0 0 90px #0ff;background:#0ff !important;}
     #change-bg-btn{background:#00ffff !important;color:#000 !important;}
 
     #game{display:none;flex-direction:column;align-items:center;position:relative;z-index:1;}
@@ -52,7 +48,6 @@
   <div id="start">
     <h1>LAST LETTER</h1>
     <p style="font-size:28px;margin:20px;">You DON'T type the first letter — just the rest!</p>
-    
     <button id="play-btn" class="btn">PLAY</button>
     <button id="change-bg-btn" class="btn">CHANGE BACKGROUND</button>
 
@@ -123,10 +118,7 @@
     if (saved) applyBackground(saved);
     else document.body.style.background = "radial-gradient(circle at center, #00ff4088, #000)";
 
-    // NEW: Only the button triggers upload
-    document.getElementById('change-bg-btn').addEventListener('click', () => {
-      document.getElementById('bg-upload').click();
-    });
+    document.getElementById('change-bg-btn').addEventListener('click', () => document.getElementById('bg-upload').click());
     document.getElementById('bg-upload').addEventListener('change', e => {
       const f = e.target.files[0];
       if(f){const r=new FileReader();r.onload=ev=>applyBackground(ev.target.result);r.readAsDataURL(f);}
@@ -138,7 +130,7 @@
       setTimeout(()=>document.getElementById('msg').classList.remove('show'), 3000);
     }
 
-    // Leaderboard & Game (same as before)
+    // Leaderboard
     async function loadLeaderboard() {
       try {
         const data = await redis.zrange(KEY, 0, 9, { rev: true, withScores: true });
@@ -158,27 +150,46 @@
     }
     loadLeaderboard(); setInterval(loadLeaderboard, 15000);
 
+    // === GAME LOGIC ===
     let words = new Set(), used = new Set(), currentLetter = "", typed = "", lastWord = "";
     let lives = 3, streak = 0, timer = 10, timerId = null, playing = false;
+    let wordArray = []; // We'll fill this with valid words
 
     fetch("word.txt?" + Date.now())
       .then(r => r.text())
-      .then(t => t.split("\n").forEach(w => {
-        const wd = w.trim().toLowerCase();
-        if (wd.length >= 4 && /^[a-z]+$/.test(wd)) words.add(wd);
-      }));
+      .then(t => {
+        t.split("\n").forEach(w => {
+          const wd = w.trim().toLowerCase();
+          if (wd.length >= 4 && /^[a-z]+$/.test(wd)) {
+            words.add(wd);
+            wordArray.push(wd);
+          }
+        });
+      });
 
     document.getElementById("play-btn").addEventListener("click", () => {
       document.getElementById("start").style.display = "none";
       document.getElementById("game").style.display = "flex";
       lives = 3; streak = 0; used.clear();
       document.getElementById("hud").innerHTML = "Hearts Hearts Hearts | STREAK <strong>0</strong>";
-      newRound();
+      newRound(); // Now starts with a real random word!
     });
 
     function newRound() {
       typed = ""; document.getElementById("typed").textContent = "";
-      document.getElementById("letter").textContent = streak === 0 ? "ANY →" : (currentLetter = lastWord.slice(-1)).toUpperCase();
+
+      // NEW: First round = random word, not "ANY"
+      if (streak === 0) {
+        const randomWord = wordArray[Math.floor(Math.random() * wordArray.length)];
+        lastWord = randomWord;
+        currentLetter = randomWord.slice(-1);
+        used.add(randomWord); // Prevent reuse
+      } else {
+        currentLetter = lastWord.slice(-1);
+      }
+
+      document.getElementById("letter").textContent = currentLetter.toUpperCase();
+      
       timer = 10; document.getElementById("timer").textContent = "10";
       document.getElementById("timer").classList.remove("pulse");
       clearInterval(timerId);
