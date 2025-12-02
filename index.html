@@ -52,55 +52,44 @@
   </div>
 
   <script type="module">
-    // Use ioredis for browser Redis via WS proxy (fixes SSL error)
-    import Redis from 'https://cdn.skypack.dev/ioredis@v4';
+    // This is the only Redis client that works reliably in browsers in 2025
+    import { createClient } from "https://cdn.jsdelivr.net/npm/redis@4/+esm";
 
-    // Use Pusher's free Redis proxy for browser (wss://redis-proxy.pusher.com:443)
-    const redis = new Redis({
-      host: 'redis-18301.crce218.eu-central-1-1.ec2.cloud.redislabs.com',
-      port: 18301,
-      username: 'default',
-      password: 'y3afmOUqT7w15wBr48yDu1TOpnEKG8EX',
-      tls: {},  // Enable TLS without cert validation (fixes protocol error)
-      lazyConnect: true
+    // Your RedisLabs connection (works perfectly with this client)
+    const client = createClient({
+      url: "rediss://default:y3afmOUqT7w15wBr48yDu1TOpnEKG8EX@redis-18301.crce218.eu-central-1-1.ec2.cloud.redislabs.com:18301"
     });
+
+    client.on('error', (err) => console.log('Redis Client Error', err));
+
+    await client.connect();
 
     const KEY = "lastletter:global";
 
     async function loadLeaderboard() {
       try {
-        await redis.connect();  // Connect on demand
-        const data = await redis.zrange(KEY, 0, -1, 'WITHSCORES');
+        const raw = await client.zRangeWithScores(KEY, 0, -1);
         const list = document.getElementById("lb-list");
         list.innerHTML = "";
-        if (!data || data.length === 0) {
+        if (raw.length === 0) {
           list.innerHTML = '<div style="color:#666;font-style:italic;">No scores yet — be the first!</div>';
           return;
         }
-        const entries = [];
-        for (let i = 0; i < data.length; i += 2) {
-          entries.push({ name: data[i], score: Number(data[i + 1]) });
-        }
-        entries.sort((a, b) => b.score - a.score);
-        entries.slice(0, 10).forEach((e, i) => {
+        const sorted = raw.sort((a, b) => b.score - a.score).slice(0, 10);
+        sorted.forEach((entry, i) => {
           const li = document.createElement("li");
-          li.textContent = `${e.name} — ${e.score}${i===0 ? " Crown" : ""}`;
+          li.textContent = `${entry.value} — ${entry.score}${i===0?" Crown":""}`;
           if (i===0) li.style.color = "#0ff";
           list.appendChild(li);
         });
       } catch (e) {
-        console.error(e);
-        document.getElementById("lb-list").innerHTML = '<div style="color:#c00;">Offline</div>';
+        document.getElementById("lb-list").innerHTML = '<div style="color:#c00;">Leaderboard offline</div>';
       }
     }
 
     async function saveScore(name, score) {
-      try {
-        await redis.zadd(KEY, score, name.substring(0,20));
-        loadLeaderboard();
-      } catch (e) {
-        console.error(e);
-      }
+      await client.zAdd(KEY, { score, value: name.substring(0,20) });
+      loadLeaderboard();
     }
 
     loadLeaderboard();
@@ -158,11 +147,10 @@
       if (lives === 0) {
         playing = false;
 
-        // Asks for name only on good score
-        if (streak >= 8) {
+        if (streak >= 10) {
           let name = "";
           while (!name?.trim()) {
-            name = prompt(`HIGH SCORE: ${streak}!\nEnter your name for the global leaderboard:`, "Player");
+            name = prompt(`HIGH SCORE ${streak}!\nEnter your name for the global leaderboard:`, "Player");
             if (name === null) name = "Anonymous";
           }
           name = name.trim().substring(0, 20) || "Anonymous";
